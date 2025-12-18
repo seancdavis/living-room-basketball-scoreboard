@@ -1,0 +1,318 @@
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+/* Pre-session and Game Over screens */
+.pre-session,
+.game-over {
+  text-align: center;
+  max-width: 500px;
+  width: 100%;
+}
+
+.pre-session h1 {
+  font-size: 2rem;
+  margin-bottom: 2rem;
+  line-height: 1.2;
+}
+
+.game-over h2 {
+  font-size: 2rem;
+  margin-bottom: 1.5rem;
+  color: #ff6b6b;
+}
+
+.final-score,
+.score-display,
+.high-score {
+  margin-bottom: 1.5rem;
+}
+
+.final-score .label,
+.score-display .label,
+.high-score .label {
+  display: block;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  opacity: 0.7;
+  margin-bottom: 0.25rem;
+}
+
+.final-score .value,
+.score-display .value,
+.high-score .value {
+  display: block;
+  font-size: 3rem;
+  font-weight: bold;
+}
+
+.start-button {
+  font-size: 1.25rem;
+  padding: 1rem 2rem;
+  background: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  margin-bottom: 1rem;
+  width: 100%;
+  max-width: 300px;
+}
+
+.start-button:hover {
+  background: #45a049;
+}
+
+.end-session-button {
+  font-size: 1rem;
+  padding: 0.75rem 1.5rem;
+  background: transparent;
+  color: #888;
+  border: 1px solid #888;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.end-session-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Scoreboard */
+.scoreboard {
+  width: 100%;
+  max-width: 500px;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* Header */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.timer {
+  font-size: 2rem;
+  font-weight: bold;
+  font-variant-numeric: tabular-nums;
+}
+
+.session-high {
+  text-align: right;
+}
+
+.session-high .label {
+  display: block;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  opacity: 0.7;
+}
+
+.session-high .value {
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+/* Main score */
+.main-score {
+  text-align: center;
+  padding: 2rem 0;
+}
+
+.main-score .score {
+  font-size: 8rem;
+  font-weight: bold;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Mode indicator */
+.mode-indicator {
+  text-align: center;
+  font-size: 1.25rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  padding: 0.75rem;
+  border-radius: 8px;
+}
+
+.mode-indicator.multiplier {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.mode-indicator.point {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  color: white;
+}
+
+/* Stats row */
+.stats-row {
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.stat {
+  text-align: center;
+  min-width: 70px;
+}
+
+.stat .label {
+  display: block;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  opacity: 0.7;
+  margin-bottom: 0.25rem;
+}
+
+.stat .value {
+  font-size: 1.75rem;
+  font-weight: bold;
+}
+
+.stat .value.misses {
+  color: #ff6b6b;
+}
+
+.stat .value.freebies {
+  color: #4CAF50;
+}
+
+/* Shot buttons */
+.shot-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.shot-button {
+  font-size: 1.5rem;
+  font-weight: bold;
+  padding: 2rem 1rem;
+  border: none;
+  border-radius: 16px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.shot-button:active {
+  transform: scale(0.98);
+}
+
+.shot-button.make {
+  background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+  color: white;
+  box-shadow: 0 4px 15px rgba(56, 239, 125, 0.3);
+}
+
+.shot-button.make:hover {
+  box-shadow: 0 6px 20px rgba(56, 239, 125, 0.4);
+}
+
+.shot-button.miss {
+  background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+  color: white;
+  box-shadow: 0 4px 15px rgba(235, 51, 73, 0.3);
+}
+
+.shot-button.miss:hover {
+  box-shadow: 0 6px 20px rgba(235, 51, 73, 0.4);
+}
+
+/* Mode actions */
+.mode-actions {
+  margin-top: 0.5rem;
+}
+
+.mode-button {
+  width: 100%;
+  font-size: 1rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.1);
+  color: inherit;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.mode-button:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.mode-button.highlight {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  color: white;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(102, 126, 234, 0);
+  }
+}
+
+/* Info text */
+.info-text {
+  font-size: 0.875rem;
+  text-align: center;
+  opacity: 0.8;
+  margin-top: 0.5rem;
+  line-height: 1.4;
+}
+
+/* Responsive adjustments */
+@media (max-width: 400px) {
+  .main-score .score {
+    font-size: 5rem;
+  }
+
+  .shot-button {
+    font-size: 1.25rem;
+    padding: 1.5rem 0.75rem;
+  }
+
+  .timer {
+    font-size: 1.5rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .pre-session h1 {
+    font-size: 3rem;
+  }
+
+  .main-score .score {
+    font-size: 10rem;
+  }
+
+  .shot-buttons {
+    gap: 2rem;
+  }
+
+  .shot-button {
+    padding: 3rem 2rem;
+    font-size: 2rem;
+  }
+}
