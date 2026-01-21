@@ -1,4 +1,8 @@
+import { useCallback, useState, useRef, useEffect } from 'react'
 import { useGameState } from './useGameState'
+import { useVoiceControl } from './useVoiceControl'
+import { useMicrophoneSelector } from './useMicrophoneSelector'
+import VoiceButton from './VoiceButton'
 import './App.css'
 
 function formatTime(seconds) {
@@ -29,6 +33,136 @@ function App() {
     enterMultiplierMode,
   } = useGameState()
 
+  // Use refs to avoid stale closures in voice command handler
+  const gameStateRef = useRef({ gameActive, mode, sessionActive, canEnterMultiplierMode })
+  const actionsRef = useRef({ makeShot, missShot, enterPointMode, enterMultiplierMode, startSession, startNewGame, endSession })
+
+  useEffect(() => {
+    gameStateRef.current = { gameActive, mode, sessionActive, canEnterMultiplierMode }
+  }, [gameActive, mode, sessionActive, canEnterMultiplierMode])
+
+  useEffect(() => {
+    actionsRef.current = { makeShot, missShot, enterPointMode, enterMultiplierMode, startSession, startNewGame, endSession }
+  }, [makeShot, missShot, enterPointMode, enterMultiplierMode, startSession, startNewGame, endSession])
+
+  // Handle voice commands - uses refs to always have current state
+  const handleVoiceCommand = useCallback((action) => {
+    const { gameActive: ga, mode: m, sessionActive: sa, canEnterMultiplierMode: cemm } = gameStateRef.current
+    const { makeShot: ms, missShot: miss, enterPointMode: epm, enterMultiplierMode: emm, startSession: ss, startNewGame: sng, endSession: es } = actionsRef.current
+
+    console.log('[App] Voice command received:', action, { gameActive: ga, mode: m, sessionActive: sa, canEnterMultiplierMode: cemm })
+
+    switch (action) {
+      case 'make':
+        if (ga) {
+          console.log('[App] Executing makeShot()')
+          ms()
+        } else {
+          console.log('[App] Ignored make - game not active')
+        }
+        break
+      case 'miss':
+        if (ga) {
+          console.log('[App] Executing missShot()')
+          miss()
+        } else {
+          console.log('[App] Ignored miss - game not active')
+        }
+        break
+      case 'enter_point_mode':
+        if (ga && m === 'multiplier') {
+          console.log('[App] Executing enterPointMode()')
+          epm()
+        } else {
+          console.log('[App] Ignored enter_point_mode - conditions not met')
+        }
+        break
+      case 'enter_multiplier_mode':
+        if (ga && m === 'point' && cemm) {
+          console.log('[App] Executing enterMultiplierMode()')
+          emm()
+        } else {
+          console.log('[App] Ignored enter_multiplier_mode - conditions not met')
+        }
+        break
+      case 'start_session':
+        if (!sa) {
+          console.log('[App] Executing startSession()')
+          ss()
+        } else {
+          console.log('[App] Ignored start_session - session already active')
+        }
+        break
+      case 'start_game':
+        if (sa && !ga) {
+          console.log('[App] Executing startNewGame()')
+          sng()
+        } else {
+          console.log('[App] Ignored start_game - conditions not met')
+        }
+        break
+      case 'end_session':
+        if (sa) {
+          console.log('[App] Executing endSession()')
+          es()
+        } else {
+          console.log('[App] Ignored end_session - no active session')
+        }
+        break
+      default:
+        console.log('[App] Unknown action:', action)
+        break
+    }
+  }, [])
+
+  // Microphone selector
+  const {
+    devices: micDevices,
+    selectedDeviceId: selectedMicId,
+    selectDevice: selectMic,
+    activateMicrophone,
+    hasPermission: hasMicPermission,
+    refreshDevices: refreshMics
+  } = useMicrophoneSelector()
+
+  const [showMicSettings, setShowMicSettings] = useState(false)
+
+  const {
+    isListening,
+    isProcessing,
+    isSupported,
+    lastTranscript,
+    lastAction,
+    error: voiceError,
+    toggleListening
+  } = useVoiceControl(handleVoiceCommand, activateMicrophone)
+
+  // Get selected mic label for display
+  const getSelectedMicLabel = () => {
+    if (!selectedMicId) return 'Default';
+    const device = micDevices.find(d => d.deviceId === selectedMicId);
+    return device?.label || 'Unknown';
+  }
+
+  // Common voice button props
+  const voiceButtonProps = {
+    isListening,
+    isProcessing,
+    isSupported,
+    lastTranscript,
+    lastAction,
+    voiceError,
+    toggleListening,
+    showMicSettings,
+    setShowMicSettings,
+    refreshMics,
+    hasMicPermission,
+    micDevices,
+    selectedMicId,
+    selectMic,
+    getSelectedMicLabel
+  }
+
   // Pre-session screen
   if (!sessionActive) {
     return (
@@ -44,6 +178,10 @@ function App() {
           <button className="start-button" onClick={startSession}>
             Start 10-Minute Session
           </button>
+          <VoiceButton {...voiceButtonProps} />
+          <p className="voice-hint">
+            Voice commands: "start", "make", "miss", "point mode", "multiplier mode"
+          </p>
         </div>
       </div>
     )
@@ -64,12 +202,15 @@ function App() {
             <span className="label">Session High</span>
             <span className="value">{sessionHighScore}</span>
           </div>
-          <button className="start-button" onClick={startNewGame}>
-            New Game
-          </button>
-          <button className="end-session-button" onClick={endSession}>
-            End Session
-          </button>
+          <div className="game-over-buttons">
+            <button className="start-button" onClick={startNewGame}>
+              New Game
+            </button>
+            <button className="end-session-button" onClick={endSession}>
+              End Session
+            </button>
+          </div>
+          <VoiceButton {...voiceButtonProps} />
         </div>
       </div>
     )
@@ -82,6 +223,7 @@ function App() {
         {/* Header */}
         <div className="header">
           <div className="timer">{formatTime(timeRemaining)}</div>
+          <VoiceButton {...voiceButtonProps} compact />
           <div className="session-high">
             <span className="label">High</span>
             <span className="value">{sessionHighScore}</span>
@@ -109,8 +251,8 @@ function App() {
             <span className="value misses">{misses}</span>
           </div>
           {mode === 'point' && multiplierShotsRemaining > 0 && (
-            <div className="stat">
-              <span className="label">Multi Shots</span>
+            <div className="stat multiplier-shots">
+              <span className="label">{multiplier}x Shots</span>
               <span className="value">{multiplierShotsRemaining}</span>
             </div>
           )}

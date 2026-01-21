@@ -22,18 +22,11 @@ export function useGameState() {
   const [canEnterMultiplierMode, setCanEnterMultiplierMode] = useState(true);
 
   // Track the last ten threshold passed (0, 10, 20, etc.)
+  // eslint-disable-next-line no-unused-vars
   const [lastTenThreshold, setLastTenThreshold] = useState(0);
 
   // Timer ref
   const timerRef = useRef(null);
-
-  // Start a new session
-  const startSession = useCallback(() => {
-    setSessionActive(true);
-    setTimeRemaining(SESSION_DURATION);
-    setSessionHighScore(0);
-    startNewGame();
-  }, []);
 
   // Start a new game within a session
   const startNewGame = useCallback(() => {
@@ -47,6 +40,14 @@ export function useGameState() {
     setCanEnterMultiplierMode(true);
     setLastTenThreshold(0);
   }, []);
+
+  // Start a new session
+  const startSession = useCallback(() => {
+    setSessionActive(true);
+    setTimeRemaining(SESSION_DURATION);
+    setSessionHighScore(0);
+    startNewGame();
+  }, [startNewGame]);
 
   // End the current game
   const endGame = useCallback(() => {
@@ -80,6 +81,7 @@ export function useGameState() {
 
       return () => clearInterval(timerRef.current);
     } else if (timeRemaining === 0 && sessionActive) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       endSession();
     }
   }, [sessionActive, timeRemaining, endSession]);
