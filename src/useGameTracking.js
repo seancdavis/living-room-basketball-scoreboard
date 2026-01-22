@@ -1,0 +1,215 @@
+import { useRef, useCallback } from 'react';
+
+// Hook for tracking game data to the database
+export function useGameTracking() {
+  const sessionIdRef = useRef(null);
+  const gameIdRef = useRef(null);
+  const sequenceNumberRef = useRef(0);
+  const pendingEventsRef = useRef([]);
+  const gameStartTimeRef = useRef(null);
+  const statsRef = useRef({ makes: 0, misses: 0, highMultiplier: 1 });
+
+  // Create a new session in the database
+  const createSession = useCallback(async () => {
+    try {
+      const response = await fetch('/.netlify/functions/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ durationSeconds: 600 }),
+      });
+      const data = await response.json();
+      if (data.session) {
+        sessionIdRef.current = data.session.id;
+        return data.session.id;
+      }
+    } catch (error) {
+      console.error('Failed to create session:', error);
+    }
+    return null;
+  }, []);
+
+  // End the current session
+  const endSessionTracking = useCallback(async (highScore, totalPoints, totalGames) => {
+    if (!sessionIdRef.current) return;
+
+    try {
+      await fetch('/.netlify/functions/session', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: sessionIdRef.current,
+          highScore,
+          totalPoints,
+          totalGames,
+        }),
+      });
+    } catch (error) {
+      console.error('Failed to end session:', error);
+    } finally {
+      sessionIdRef.current = null;
+    }
+  }, []);
+
+  // Create a new game in the database
+  const createGame = useCallback(async () => {
+    if (!sessionIdRef.current) return null;
+
+    try {
+      const response = await fetch('/.netlify/functions/game', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId: sessionIdRef.current }),
+      });
+      const data = await response.json();
+      if (data.game) {
+        gameIdRef.current = data.game.id;
+        sequenceNumberRef.current = 0;
+        pendingEventsRef.current = [];
+        gameStartTimeRef.current = Date.now();
+        statsRef.current = { makes: 0, misses: 0, highMultiplier: 1 };
+        return data.game.id;
+      }
+    } catch (error) {
+      console.error('Failed to create game:', error);
+    }
+    return null;
+  }, []);
+
+  // End the current game
+  const endGameTracking = useCallback(async (finalScore, endReason) => {
+    if (!gameIdRef.current) return;
+
+    const durationSeconds = gameStartTimeRef.current
+      ? Math.floor((Date.now() - gameStartTimeRef.current) / 1000)
+      : 0;
+
+    try {
+      // First flush any pending events
+      if (pendingEventsRef.current.length > 0) {
+        await fetch('/.netlify/functions/event', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ events: pendingEventsRef.current }),
+        });
+        pendingEventsRef.current = [];
+      }
+
+      // Then update the game
+      await fetch('/.netlify/functions/game', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: gameIdRef.current,
+          finalScore,
+          highMultiplier: statsRef.current.highMultiplier,
+          totalMakes: statsRef.current.makes,
+          totalMisses: statsRef.current.misses,
+          durationSeconds,
+          endReason,
+        }),
+      });
+    } catch (error) {
+      console.error('Failed to end game:', error);
+    } finally {
+      gameIdRef.current = null;
+      gameStartTimeRef.current = null;
+    }
+  }, []);
+
+  // Record an event
+  const recordEvent = useCallback((eventData) => {
+    if (!gameIdRef.current) return;
+
+    const event = {
+      gameId: gameIdRef.current,
+      sequenceNumber: sequenceNumberRef.current++,
+      ...eventData,
+    };
+
+    // Track stats
+    if (eventData.eventType === 'make') {
+      statsRef.current.makes++;
+      if (eventData.multiplier > statsRef.current.highMultiplier) {
+        statsRef.current.highMultiplier = eventData.multiplier;
+      }
+    } else if (eventData.eventType === 'miss') {
+      statsRef.current.misses++;
+    }
+
+    // Add to pending events
+    pendingEventsRef.current.push(event);
+
+    // Batch send events (every 5 events or immediately for important events)
+    const importantEvents = ['game_start', 'game_end', 'mode_change'];
+    if (pendingEventsRef.current.length >= 5 || importantEvents.includes(eventData.eventType)) {
+      const eventsToSend = [...pendingEventsRef.current];
+      pendingEventsRef.current = [];
+
+      fetch('/.netlify/functions/event', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ events: eventsToSend }),
+      }).catch(error => {
+        console.error('Failed to record events:', error);
+        // Put events back for retry
+        pendingEventsRef.current = [...eventsToSend, ...pendingEventsRef.current];
+      });
+    }
+  }, []);
+
+  // Helper to record a make event
+  const recordMake = useCallback((state) => {
+    recordEvent({
+      eventType: 'make',
+      score: state.score,
+      multiplier: state.multiplier,
+      multiplierShotsRemaining: state.multiplierShotsRemaining,
+      missesRemaining: state.misses,
+      freebiesRemaining: state.freebiesRemaining,
+      mode: state.mode,
+      pointsEarned: state.pointsEarned || 0,
+    });
+  }, [recordEvent]);
+
+  // Helper to record a miss event
+  const recordMiss = useCallback((state, usedFreebie = false) => {
+    recordEvent({
+      eventType: 'miss',
+      score: state.score,
+      multiplier: state.multiplier,
+      multiplierShotsRemaining: state.multiplierShotsRemaining,
+      missesRemaining: state.misses,
+      freebiesRemaining: state.freebiesRemaining,
+      mode: state.mode,
+      usedFreebie,
+    });
+  }, [recordEvent]);
+
+  // Helper to record mode change
+  const recordModeChange = useCallback((state, previousMode, newMode) => {
+    recordEvent({
+      eventType: 'mode_change',
+      score: state.score,
+      multiplier: state.multiplier,
+      multiplierShotsRemaining: state.multiplierShotsRemaining,
+      missesRemaining: state.misses,
+      freebiesRemaining: state.freebiesRemaining,
+      mode: newMode,
+      previousMode,
+      newMode,
+    });
+  }, [recordEvent]);
+
+  return {
+    createSession,
+    endSessionTracking,
+    createGame,
+    endGameTracking,
+    recordMake,
+    recordMiss,
+    recordModeChange,
+    // Expose refs for checking state
+    hasActiveSession: () => !!sessionIdRef.current,
+    hasActiveGame: () => !!gameIdRef.current,
+  };
+}

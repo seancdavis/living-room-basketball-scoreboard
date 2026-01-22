@@ -2,6 +2,7 @@ import { useCallback, useState, useRef, useEffect } from 'react'
 import { useGameState } from './useGameState'
 import { useVoiceControl } from './useVoiceControl'
 import { useMicrophoneSelector } from './useMicrophoneSelector'
+import { useGameTracking } from './useGameTracking'
 import VoiceButton from './VoiceButton'
 import './App.css'
 
@@ -33,17 +34,144 @@ function App() {
     enterMultiplierMode,
   } = useGameState()
 
+  // Database tracking
+  const {
+    createSession,
+    endSessionTracking,
+    createGame,
+    endGameTracking,
+    recordMake,
+    recordMiss,
+    recordModeChange,
+  } = useGameTracking()
+
+  // Track game count and total points for session stats
+  const gameCountRef = useRef(0)
+  const totalPointsRef = useRef(0)
+  const prevScoreRef = useRef(0)
+
+  // Wrapped miss action that includes tracking
+  const prevMissesRef = useRef(misses)
+  const prevFreebiesRef = useRef(freebiesRemaining)
+  const trackingMissRef = useRef(false)
+
+  const trackedMissShot = useCallback(() => {
+    trackingMissRef.current = true
+    missShot()
+  }, [missShot])
+
   // Use refs to avoid stale closures in voice command handler
   const gameStateRef = useRef({ gameActive, mode, sessionActive, canEnterMultiplierMode })
-  const actionsRef = useRef({ makeShot, missShot, enterPointMode, enterMultiplierMode, startSession, startNewGame, endSession })
+  const actionsRef = useRef({ makeShot, missShot: trackedMissShot, enterPointMode, enterMultiplierMode, startSession, startNewGame, endSession })
 
   useEffect(() => {
     gameStateRef.current = { gameActive, mode, sessionActive, canEnterMultiplierMode }
   }, [gameActive, mode, sessionActive, canEnterMultiplierMode])
 
   useEffect(() => {
-    actionsRef.current = { makeShot, missShot, enterPointMode, enterMultiplierMode, startSession, startNewGame, endSession }
-  }, [makeShot, missShot, enterPointMode, enterMultiplierMode, startSession, startNewGame, endSession])
+    actionsRef.current = { makeShot, missShot: trackedMissShot, enterPointMode, enterMultiplierMode, startSession, startNewGame, endSession }
+  }, [makeShot, trackedMissShot, enterPointMode, enterMultiplierMode, startSession, startNewGame, endSession])
+
+  // Track session lifecycle
+  const prevSessionActiveRef = useRef(false)
+  useEffect(() => {
+    const wasActive = prevSessionActiveRef.current
+    prevSessionActiveRef.current = sessionActive
+
+    if (sessionActive && !wasActive) {
+      // Session just started
+      gameCountRef.current = 0
+      totalPointsRef.current = 0
+      createSession()
+    } else if (!sessionActive && wasActive) {
+      // Session just ended
+      endSessionTracking(sessionHighScore, totalPointsRef.current, gameCountRef.current)
+    }
+  }, [sessionActive, sessionHighScore, createSession, endSessionTracking])
+
+  // Track game lifecycle
+  const prevGameActiveRef = useRef(false)
+  useEffect(() => {
+    const wasActive = prevGameActiveRef.current
+    prevGameActiveRef.current = gameActive
+
+    if (gameActive && !wasActive) {
+      // Game just started
+      gameCountRef.current++
+      prevScoreRef.current = 0
+      createGame()
+    } else if (!gameActive && wasActive) {
+      // Game just ended
+      totalPointsRef.current += score
+      const endReason = misses <= 0 ? 'out_of_misses' : (timeRemaining <= 0 ? 'session_ended' : 'manual_end')
+      endGameTracking(score, endReason)
+    }
+  }, [gameActive, score, misses, timeRemaining, createGame, endGameTracking])
+
+  // Track score changes (makes)
+  useEffect(() => {
+    if (!gameActive) return
+    const prevScore = prevScoreRef.current
+    if (score > prevScore) {
+      const pointsEarned = score - prevScore
+      recordMake({
+        score,
+        multiplier,
+        multiplierShotsRemaining,
+        misses,
+        freebiesRemaining,
+        mode,
+        pointsEarned,
+      })
+    }
+    prevScoreRef.current = score
+  }, [score, gameActive, multiplier, multiplierShotsRemaining, misses, freebiesRemaining, mode, recordMake])
+
+  // Track mode changes
+  const prevModeRef = useRef(mode)
+  useEffect(() => {
+    if (!gameActive) return
+    const prevMode = prevModeRef.current
+    if (mode !== prevMode) {
+      recordModeChange({
+        score,
+        multiplier,
+        multiplierShotsRemaining,
+        misses,
+        freebiesRemaining,
+        mode,
+      }, prevMode, mode)
+    }
+    prevModeRef.current = mode
+  }, [mode, gameActive, score, multiplier, multiplierShotsRemaining, misses, freebiesRemaining, recordModeChange])
+
+  // Track misses after they happen
+  useEffect(() => {
+    if (!gameActive || !trackingMissRef.current) {
+      prevMissesRef.current = misses
+      prevFreebiesRef.current = freebiesRemaining
+      return
+    }
+
+    const prevMisses = prevMissesRef.current
+    const prevFreebies = prevFreebiesRef.current
+    trackingMissRef.current = false
+
+    // Determine if a freebie was used
+    const usedFreebie = prevFreebies > freebiesRemaining && prevMisses === misses
+
+    recordMiss({
+      score,
+      multiplier,
+      multiplierShotsRemaining,
+      misses,
+      freebiesRemaining,
+      mode,
+    }, usedFreebie)
+
+    prevMissesRef.current = misses
+    prevFreebiesRef.current = freebiesRemaining
+  }, [gameActive, misses, freebiesRemaining, score, multiplier, multiplierShotsRemaining, mode, recordMiss])
 
   // Handle voice commands - uses refs to always have current state
   const handleVoiceCommand = useCallback((action) => {
@@ -269,7 +397,7 @@ function App() {
           <button className="shot-button make" onClick={makeShot}>
             MAKE
           </button>
-          <button className="shot-button miss" onClick={missShot}>
+          <button className="shot-button miss" onClick={trackedMissShot}>
             MISS
           </button>
         </div>
