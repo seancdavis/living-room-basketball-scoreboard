@@ -3,7 +3,9 @@ import { useRef, useCallback } from 'react';
 // Hook for tracking game data to the database
 export function useGameTracking() {
   const sessionIdRef = useRef(null);
+  const sessionPromiseRef = useRef(null);
   const gameIdRef = useRef(null);
+  const gamePromiseRef = useRef(null);
   const sequenceNumberRef = useRef(0);
   const pendingEventsRef = useRef([]);
   const gameStartTimeRef = useRef(null);
@@ -11,21 +13,26 @@ export function useGameTracking() {
 
   // Create a new session in the database
   const createSession = useCallback(async () => {
-    try {
-      const response = await fetch('/.netlify/functions/session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ durationSeconds: 600 }),
-      });
-      const data = await response.json();
-      if (data.session) {
-        sessionIdRef.current = data.session.id;
-        return data.session.id;
+    const promise = (async () => {
+      try {
+        const response = await fetch('/.netlify/functions/session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ durationSeconds: 600 }),
+        });
+        const data = await response.json();
+        if (data.session) {
+          sessionIdRef.current = data.session.id;
+          return data.session.id;
+        }
+      } catch (error) {
+        console.error('Failed to create session:', error);
       }
-    } catch (error) {
-      console.error('Failed to create session:', error);
-    }
-    return null;
+      return null;
+    })();
+
+    sessionPromiseRef.current = promise;
+    return promise;
   }, []);
 
   // End the current session
@@ -52,27 +59,40 @@ export function useGameTracking() {
 
   // Create a new game in the database
   const createGame = useCallback(async () => {
-    if (!sessionIdRef.current) return null;
-
-    try {
-      const response = await fetch('/.netlify/functions/game', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId: sessionIdRef.current }),
-      });
-      const data = await response.json();
-      if (data.game) {
-        gameIdRef.current = data.game.id;
-        sequenceNumberRef.current = 0;
-        pendingEventsRef.current = [];
-        gameStartTimeRef.current = Date.now();
-        statsRef.current = { makes: 0, misses: 0, highMultiplier: 1 };
-        return data.game.id;
+    const promise = (async () => {
+      // Wait for session to be created if it's still pending
+      if (!sessionIdRef.current && sessionPromiseRef.current) {
+        await sessionPromiseRef.current;
       }
-    } catch (error) {
-      console.error('Failed to create game:', error);
-    }
-    return null;
+
+      if (!sessionIdRef.current) {
+        console.error('Failed to create game: no session ID');
+        return null;
+      }
+
+      try {
+        const response = await fetch('/.netlify/functions/game', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId: sessionIdRef.current }),
+        });
+        const data = await response.json();
+        if (data.game) {
+          gameIdRef.current = data.game.id;
+          sequenceNumberRef.current = 0;
+          pendingEventsRef.current = [];
+          gameStartTimeRef.current = Date.now();
+          statsRef.current = { makes: 0, misses: 0, highMultiplier: 1 };
+          return data.game.id;
+        }
+      } catch (error) {
+        console.error('Failed to create game:', error);
+      }
+      return null;
+    })();
+
+    gamePromiseRef.current = promise;
+    return promise;
   }, []);
 
   // End the current game
@@ -116,17 +136,12 @@ export function useGameTracking() {
     }
   }, []);
 
+  // Queue for events that arrive before game is created
+  const earlyEventsRef = useRef([]);
+
   // Record an event
   const recordEvent = useCallback((eventData) => {
-    if (!gameIdRef.current) return;
-
-    const event = {
-      gameId: gameIdRef.current,
-      sequenceNumber: sequenceNumberRef.current++,
-      ...eventData,
-    };
-
-    // Track stats
+    // Track stats immediately (before we know game ID)
     if (eventData.eventType === 'make') {
       statsRef.current.makes++;
       if (eventData.multiplier > statsRef.current.highMultiplier) {
@@ -135,6 +150,46 @@ export function useGameTracking() {
     } else if (eventData.eventType === 'miss') {
       statsRef.current.misses++;
     }
+
+    // If game isn't created yet, queue the event and wait
+    if (!gameIdRef.current) {
+      earlyEventsRef.current.push(eventData);
+
+      // Start waiting for game to be created
+      if (gamePromiseRef.current) {
+        gamePromiseRef.current.then(() => {
+          if (gameIdRef.current && earlyEventsRef.current.length > 0) {
+            // Process queued events
+            const queuedEvents = earlyEventsRef.current.map((data) => ({
+              gameId: gameIdRef.current,
+              sequenceNumber: sequenceNumberRef.current++,
+              ...data,
+            }));
+            earlyEventsRef.current = [];
+            pendingEventsRef.current.push(...queuedEvents);
+
+            // Send them
+            const eventsToSend = [...pendingEventsRef.current];
+            pendingEventsRef.current = [];
+            fetch('/.netlify/functions/event', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ events: eventsToSend }),
+            }).catch(error => {
+              console.error('Failed to record events:', error);
+              pendingEventsRef.current = [...eventsToSend, ...pendingEventsRef.current];
+            });
+          }
+        });
+      }
+      return;
+    }
+
+    const event = {
+      gameId: gameIdRef.current,
+      sequenceNumber: sequenceNumberRef.current++,
+      ...eventData,
+    };
 
     // Add to pending events
     pendingEventsRef.current.push(event);
