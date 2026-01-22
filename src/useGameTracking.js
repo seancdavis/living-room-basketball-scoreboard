@@ -97,7 +97,15 @@ export function useGameTracking() {
 
   // End the current game
   const endGameTracking = useCallback(async (finalScore, endReason) => {
-    if (!gameIdRef.current) return;
+    // Wait for game to be created if it's still pending
+    if (!gameIdRef.current && gamePromiseRef.current) {
+      await gamePromiseRef.current;
+    }
+
+    if (!gameIdRef.current) {
+      console.error('Failed to end game: no game ID');
+      return;
+    }
 
     const durationSeconds = gameStartTimeRef.current
       ? Math.floor((Date.now() - gameStartTimeRef.current) / 1000)
@@ -119,7 +127,7 @@ export function useGameTracking() {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          id: gameIdRef.current,
+          gameId: gameIdRef.current,
           finalScore,
           highMultiplier: statsRef.current.highMultiplier,
           totalMakes: statsRef.current.makes,
