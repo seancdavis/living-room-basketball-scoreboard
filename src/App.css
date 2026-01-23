@@ -150,8 +150,9 @@
 }
 
 .timer-value {
+  font-family: 'Orbitron', sans-serif;
   font-size: 3.5rem;
-  font-weight: 800;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.05em;
   color: #ffd93d;
@@ -166,6 +167,7 @@
 }
 
 .main-score .score {
+  font-family: 'Orbitron', sans-serif;
   font-size: 8rem;
   font-weight: 900;
   line-height: 1;
@@ -223,8 +225,9 @@
 }
 
 .key-stat-value {
+  font-family: 'Orbitron', sans-serif;
   font-size: 4rem;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1;
   font-variant-numeric: tabular-nums;
 }
