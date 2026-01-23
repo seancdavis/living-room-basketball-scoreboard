@@ -147,6 +147,10 @@
 /* Timer - large, like a gym scoreboard */
 .timer-display {
   text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
 }
 
 .timer-value {
@@ -157,6 +161,45 @@
   letter-spacing: 0.05em;
   color: #ffd93d;
   text-shadow: 0 0 30px rgba(255, 217, 61, 0.4);
+}
+
+.timer-display.paused .timer-value {
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0.3; }
+}
+
+.pause-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 1.25rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pause-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.paused-indicator {
+  text-align: center;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  color: #ffd93d;
+  animation: blink 1s infinite;
 }
 
 /* Main score */

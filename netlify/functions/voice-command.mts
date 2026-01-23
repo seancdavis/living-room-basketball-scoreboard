@@ -15,6 +15,8 @@ Available actions:
 - "start_session" - Start a new 10-minute session
 - "start_game" - Start a new game within a session
 - "end_session" - End the current session
+- "pause" - Pause the timer
+- "resume" - Resume the timer (same as pause, it toggles)
 - "unknown" - Command not recognized
 
 Respond with ONLY a JSON object in this exact format:
@@ -28,6 +30,8 @@ Examples of voice commands and their actions:
 - "start", "begin", "let's go", "start session" → {"action": "start_session", "confidence": 0.85}
 - "new game", "restart", "start over" → {"action": "start_game", "confidence": 0.85}
 - "end", "stop", "finish", "end session" → {"action": "end_session", "confidence": 0.85}
+- "pause", "hold", "wait", "timeout", "time out" → {"action": "pause", "confidence": 0.9}
+- "resume", "continue", "go", "unpause", "play" → {"action": "resume", "confidence": 0.9}
 
 Be flexible with pronunciation and similar-sounding words. If unsure, return unknown with low confidence.`;
 
@@ -107,6 +111,8 @@ export default async (request: Request, _context: Context): Promise<Response> =>
       else if (lowerResponse.includes('start_session')) action = 'start_session';
       else if (lowerResponse.includes('start_game')) action = 'start_game';
       else if (lowerResponse.includes('end_session')) action = 'end_session';
+      else if (lowerResponse.includes('pause')) action = 'pause';
+      else if (lowerResponse.includes('resume')) action = 'resume';
 
       return new Response(JSON.stringify({ action, confidence: 0.5 } satisfies VoiceCommandResponse), {
         headers: { 'Content-Type': 'application/json' }

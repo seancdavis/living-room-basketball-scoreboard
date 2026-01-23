@@ -10,6 +10,7 @@ export function useGameState() {
   const [sessionActive, setSessionActive] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState(SESSION_DURATION);
   const [sessionHighScore, setSessionHighScore] = useState(0);
+  const [paused, setPaused] = useState(false);
 
   // Game state
   const [gameActive, setGameActive] = useState(false);
@@ -61,14 +62,21 @@ export function useGameState() {
     setSessionHighScore(prev => Math.max(prev, score));
     setSessionActive(false);
     setGameActive(false);
+    setPaused(false);
     if (timerRef.current) {
       clearInterval(timerRef.current);
     }
   }, [score]);
 
+  // Toggle pause
+  const togglePause = useCallback(() => {
+    if (!sessionActive) return;
+    setPaused(prev => !prev);
+  }, [sessionActive]);
+
   // Timer effect
   useEffect(() => {
-    if (sessionActive && timeRemaining > 0) {
+    if (sessionActive && timeRemaining > 0 && !paused) {
       timerRef.current = setInterval(() => {
         setTimeRemaining(prev => {
           if (prev <= 1) {
@@ -84,7 +92,7 @@ export function useGameState() {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       endSession();
     }
-  }, [sessionActive, timeRemaining, endSession]);
+  }, [sessionActive, timeRemaining, paused, endSession]);
 
   // Calculate misses to add when passing tens
   const calculateMissesGained = (prevScore, newScore) => {
@@ -209,6 +217,7 @@ export function useGameState() {
     sessionActive,
     timeRemaining,
     sessionHighScore,
+    paused,
 
     // Game state
     gameActive,
@@ -224,6 +233,7 @@ export function useGameState() {
     startSession,
     startNewGame,
     endSession,
+    togglePause,
     makeShot,
     missShot,
     enterPointMode,

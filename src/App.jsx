@@ -17,6 +17,7 @@ function App() {
     sessionActive,
     timeRemaining,
     sessionHighScore,
+    paused,
     gameActive,
     mode,
     score,
@@ -28,6 +29,7 @@ function App() {
     startSession,
     startNewGame,
     endSession,
+    togglePause,
     makeShot,
     missShot,
     enterPointMode,
@@ -61,16 +63,16 @@ function App() {
   }, [missShot])
 
   // Use refs to avoid stale closures in voice command handler
-  const gameStateRef = useRef({ gameActive, mode, sessionActive, canEnterMultiplierMode })
-  const actionsRef = useRef({ makeShot, missShot: trackedMissShot, enterPointMode, enterMultiplierMode, startSession, startNewGame, endSession })
+  const gameStateRef = useRef({ gameActive, mode, sessionActive, canEnterMultiplierMode, paused })
+  const actionsRef = useRef({ makeShot, missShot: trackedMissShot, enterPointMode, enterMultiplierMode, startSession, startNewGame, endSession, togglePause })
 
   useEffect(() => {
-    gameStateRef.current = { gameActive, mode, sessionActive, canEnterMultiplierMode }
-  }, [gameActive, mode, sessionActive, canEnterMultiplierMode])
+    gameStateRef.current = { gameActive, mode, sessionActive, canEnterMultiplierMode, paused }
+  }, [gameActive, mode, sessionActive, canEnterMultiplierMode, paused])
 
   useEffect(() => {
-    actionsRef.current = { makeShot, missShot: trackedMissShot, enterPointMode, enterMultiplierMode, startSession, startNewGame, endSession }
-  }, [makeShot, trackedMissShot, enterPointMode, enterMultiplierMode, startSession, startNewGame, endSession])
+    actionsRef.current = { makeShot, missShot: trackedMissShot, enterPointMode, enterMultiplierMode, startSession, startNewGame, endSession, togglePause }
+  }, [makeShot, trackedMissShot, enterPointMode, enterMultiplierMode, startSession, startNewGame, endSession, togglePause])
 
   // Track session lifecycle
   const prevSessionActiveRef = useRef(false)
@@ -175,10 +177,10 @@ function App() {
 
   // Handle voice commands - uses refs to always have current state
   const handleVoiceCommand = useCallback((action) => {
-    const { gameActive: ga, mode: m, sessionActive: sa, canEnterMultiplierMode: cemm } = gameStateRef.current
-    const { makeShot: ms, missShot: miss, enterPointMode: epm, enterMultiplierMode: emm, startSession: ss, startNewGame: sng, endSession: es } = actionsRef.current
+    const { gameActive: ga, mode: m, sessionActive: sa, canEnterMultiplierMode: cemm, paused: p } = gameStateRef.current
+    const { makeShot: ms, missShot: miss, enterPointMode: epm, enterMultiplierMode: emm, startSession: ss, startNewGame: sng, endSession: es, togglePause: tp } = actionsRef.current
 
-    console.log('[App] Voice command received:', action, { gameActive: ga, mode: m, sessionActive: sa, canEnterMultiplierMode: cemm })
+    console.log('[App] Voice command received:', action, { gameActive: ga, mode: m, sessionActive: sa, canEnterMultiplierMode: cemm, paused: p })
 
     switch (action) {
       case 'make':
@@ -235,6 +237,15 @@ function App() {
           es()
         } else {
           console.log('[App] Ignored end_session - no active session')
+        }
+        break
+      case 'pause':
+      case 'resume':
+        if (sa) {
+          console.log('[App] Executing togglePause()')
+          tp()
+        } else {
+          console.log('[App] Ignored pause/resume - no active session')
         }
         break
       default:
@@ -349,9 +360,17 @@ function App() {
     <div className="app gameplay">
       <div className="scoreboard">
         {/* Timer - large and prominent */}
-        <div className="timer-display">
+        <div className={`timer-display ${paused ? 'paused' : ''}`}>
           <span className="timer-value">{formatTime(timeRemaining)}</span>
+          <button className="pause-btn" onClick={togglePause}>
+            {paused ? '▶' : '⏸'}
+          </button>
         </div>
+
+        {/* Paused overlay */}
+        {paused && (
+          <div className="paused-indicator">PAUSED</div>
+        )}
 
         {/* Main score display */}
         <div className="main-score">
