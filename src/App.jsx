@@ -3,6 +3,7 @@ import { useGameState } from './useGameState'
 import { useVoiceControl } from './useVoiceControl'
 import { useMicrophoneSelector } from './useMicrophoneSelector'
 import { useGameTracking } from './useGameTracking'
+import { useAudioFeedback } from './useAudioFeedback'
 import VoiceButton from './VoiceButton'
 import './App.css'
 
@@ -46,6 +47,21 @@ function App() {
     recordMiss,
     recordModeChange,
   } = useGameTracking()
+
+  // Audio feedback
+  const {
+    playMake,
+    playMiss,
+    playPointMode,
+    playMultiplierMode,
+    playGameOver,
+    playPassedTen,
+    playPauseToggle,
+    playListeningStart,
+    playProcessing,
+    playCommandRecognized,
+    playCommandUnknown,
+  } = useAudioFeedback()
 
   // Track game count and total points for session stats
   const gameCountRef = useRef(0)
@@ -175,6 +191,76 @@ function App() {
     prevFreebiesRef.current = freebiesRemaining
   }, [gameActive, misses, freebiesRemaining, score, multiplier, multiplierShotsRemaining, mode, recordMiss])
 
+  // Audio feedback for score changes (makes)
+  const audioScoreRef = useRef(score)
+  useEffect(() => {
+    if (!gameActive) {
+      audioScoreRef.current = score
+      return
+    }
+    if (score > audioScoreRef.current) {
+      playMake()
+    }
+    audioScoreRef.current = score
+  }, [score, gameActive, playMake])
+
+  // Audio feedback for misses
+  const audioMissesRef = useRef(misses)
+  const audioFreebiesRef = useRef(freebiesRemaining)
+  useEffect(() => {
+    if (!gameActive) {
+      audioMissesRef.current = misses
+      audioFreebiesRef.current = freebiesRemaining
+      return
+    }
+    // Play miss sound when misses decrease OR when freebies decrease (freebie used)
+    if (misses < audioMissesRef.current || freebiesRemaining < audioFreebiesRef.current) {
+      playMiss()
+    }
+    // Play celebration when passing a 10 (freebies increase to 3)
+    if (freebiesRemaining === 3 && audioFreebiesRef.current < 3) {
+      playPassedTen()
+    }
+    audioMissesRef.current = misses
+    audioFreebiesRef.current = freebiesRemaining
+  }, [misses, freebiesRemaining, gameActive, playMiss, playPassedTen])
+
+  // Audio feedback for mode changes
+  const audioModeRef = useRef(mode)
+  useEffect(() => {
+    if (!gameActive) {
+      audioModeRef.current = mode
+      return
+    }
+    if (mode !== audioModeRef.current) {
+      if (mode === 'point') {
+        playPointMode()
+      } else {
+        playMultiplierMode()
+      }
+    }
+    audioModeRef.current = mode
+  }, [mode, gameActive, playPointMode, playMultiplierMode])
+
+  // Audio feedback for game over
+  const audioGameActiveRef = useRef(gameActive)
+  useEffect(() => {
+    if (!gameActive && audioGameActiveRef.current) {
+      // Game just ended
+      playGameOver()
+    }
+    audioGameActiveRef.current = gameActive
+  }, [gameActive, playGameOver])
+
+  // Audio feedback for pause toggle
+  const audioPausedRef = useRef(paused)
+  useEffect(() => {
+    if (paused !== audioPausedRef.current && sessionActive) {
+      playPauseToggle()
+    }
+    audioPausedRef.current = paused
+  }, [paused, sessionActive, playPauseToggle])
+
   // Handle voice commands - uses refs to always have current state
   const handleVoiceCommand = useCallback((action) => {
     const { gameActive: ga, mode: m, sessionActive: sa, canEnterMultiplierMode: cemm, paused: p } = gameStateRef.current
@@ -275,6 +361,36 @@ function App() {
     error: voiceError,
     toggleListening
   } = useVoiceControl(handleVoiceCommand, activateMicrophone)
+
+  // Audio feedback for voice control
+  const audioListeningRef = useRef(isListening)
+  const audioProcessingRef = useRef(isProcessing)
+  const audioLastActionRef = useRef(lastAction)
+
+  useEffect(() => {
+    if (isListening && !audioListeningRef.current) {
+      playListeningStart()
+    }
+    audioListeningRef.current = isListening
+  }, [isListening, playListeningStart])
+
+  useEffect(() => {
+    if (isProcessing && !audioProcessingRef.current) {
+      playProcessing()
+    }
+    audioProcessingRef.current = isProcessing
+  }, [isProcessing, playProcessing])
+
+  useEffect(() => {
+    if (lastAction && lastAction !== audioLastActionRef.current) {
+      if (lastAction === 'unknown') {
+        playCommandUnknown()
+      } else {
+        playCommandRecognized()
+      }
+    }
+    audioLastActionRef.current = lastAction
+  }, [lastAction, playCommandRecognized, playCommandUnknown])
 
   // Get selected mic label for display
   const getSelectedMicLabel = () => {
