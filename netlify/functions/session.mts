@@ -1,6 +1,6 @@
 import type { Context } from "@netlify/functions";
 import { db, sessions, games } from "../../db";
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 
 export default async (req: Request, context: Context) => {
   const method = req.method;
@@ -49,16 +49,23 @@ export default async (req: Request, context: Context) => {
     }
   }
 
-  // GET - Get session details with games
+  // GET - Get session(s)
+  // With id param: get single session with games
+  // Without id param: get all sessions (most recent first)
   if (method === "GET") {
     try {
       const url = new URL(req.url);
       const sessionId = url.searchParams.get("id");
 
+      // If no ID, return all sessions
       if (!sessionId) {
-        return Response.json({ error: "Session ID is required" }, { status: 400 });
+        const allSessions = await db.query.sessions.findMany({
+          orderBy: [desc(sessions.startedAt)],
+        });
+        return Response.json({ sessions: allSessions });
       }
 
+      // Get single session with games
       const session = await db.query.sessions.findFirst({
         where: eq(sessions.id, sessionId),
       });
@@ -76,6 +83,32 @@ export default async (req: Request, context: Context) => {
     } catch (error) {
       console.error("Error fetching session:", error);
       return Response.json({ error: "Failed to fetch session" }, { status: 500 });
+    }
+  }
+
+  // DELETE - Delete a session (cascades to games and events)
+  if (method === "DELETE") {
+    try {
+      const url = new URL(req.url);
+      const sessionId = url.searchParams.get("id");
+
+      if (!sessionId) {
+        return Response.json({ error: "Session ID is required" }, { status: 400 });
+      }
+
+      // The cascade delete will automatically remove games and events
+      const result = await db.delete(sessions)
+        .where(eq(sessions.id, sessionId))
+        .returning();
+
+      if (result.length === 0) {
+        return Response.json({ error: "Session not found" }, { status: 404 });
+      }
+
+      return Response.json({ success: true, deleted: result[0] });
+    } catch (error) {
+      console.error("Error deleting session:", error);
+      return Response.json({ error: "Failed to delete session" }, { status: 500 });
     }
   }
 

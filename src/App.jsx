@@ -5,6 +5,7 @@ import { useMicrophoneSelector } from './useMicrophoneSelector'
 import { useGameTracking } from './useGameTracking'
 import { useAudioFeedback } from './useAudioFeedback'
 import VoiceButton from './VoiceButton'
+import History from './History'
 import './App.css'
 
 function formatTime(seconds) {
@@ -384,6 +385,7 @@ function App() {
   } = useMicrophoneSelector()
 
   const [showMicSettings, setShowMicSettings] = useState(false)
+  const [showHistory, setShowHistory] = useState(false)
 
   const {
     isListening,
@@ -466,11 +468,15 @@ function App() {
           <button className="start-button" onClick={startSession}>
             Start 10-Minute Session
           </button>
+          <button className="history-button" onClick={() => setShowHistory(true)}>
+            View History
+          </button>
           <VoiceButton {...voiceButtonProps} />
           <p className="voice-hint">
             Voice commands: "start", "make", "miss", "point mode", "multiplier mode"
           </p>
         </div>
+        {showHistory && <History onClose={() => setShowHistory(false)} />}
       </div>
     )
   }
