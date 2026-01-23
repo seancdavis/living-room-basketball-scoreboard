@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 
-export function useVoiceControl(onCommand, activateMicrophone) {
+export function useVoiceControl(onCommand, activateMicrophone, deactivateMicrophone) {
   const [isListening, setIsListening] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [lastTranscript, setLastTranscript] = useState('');
@@ -84,8 +84,13 @@ export function useVoiceControl(onCommand, activateMicrophone) {
     if (!isSupported) return;
 
     // Activate the selected microphone before starting recognition
+    // This is required for browsers like Arc that need explicit mic permission
     if (activateMicrophone) {
-      await activateMicrophone();
+      const micActivated = await activateMicrophone();
+      if (!micActivated) {
+        setError('Failed to access microphone. Check permissions in browser settings.');
+        return;
+      }
     }
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -159,8 +164,12 @@ export function useVoiceControl(onCommand, activateMicrophone) {
       recognitionRef.current = null;
       recognition.stop();
     }
+    // Release the microphone stream
+    if (deactivateMicrophone) {
+      deactivateMicrophone();
+    }
     setIsListening(false);
-  }, []);
+  }, [deactivateMicrophone]);
 
   // Toggle listening
   const toggleListening = useCallback(() => {

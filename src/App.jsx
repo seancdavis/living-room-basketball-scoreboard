@@ -364,6 +364,7 @@ function App() {
     selectedDeviceId: selectedMicId,
     selectDevice: selectMic,
     activateMicrophone,
+    deactivateMicrophone,
     hasPermission: hasMicPermission,
     refreshDevices: refreshMics
   } = useMicrophoneSelector()
@@ -378,7 +379,7 @@ function App() {
     lastAction,
     error: voiceError,
     toggleListening
-  } = useVoiceControl(handleVoiceCommand, activateMicrophone)
+  } = useVoiceControl(handleVoiceCommand, activateMicrophone, deactivateMicrophone)
 
   // Audio feedback for voice control
   const audioListeningRef = useRef(isListening)

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 const STORAGE_KEY = 'preferred-microphone-id';
 
@@ -65,32 +65,66 @@ export function useMicrophoneSelector() {
     }
   }, []);
 
+  // Active stream ref - keeps mic "warm" while speech recognition is active
+  const activeStreamRef = useRef(null);
+
   // Activate the selected microphone (call before starting speech recognition)
+  // Returns a cleanup function to release the stream
   const activateMicrophone = useCallback(async () => {
-    if (!selectedDeviceId) return true; // Use default
+    // Release any existing stream first
+    if (activeStreamRef.current) {
+      activeStreamRef.current.getTracks().forEach(track => track.stop());
+      activeStreamRef.current = null;
+    }
 
     try {
-      // Request the specific microphone - this sets it as active
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: { deviceId: { exact: selectedDeviceId } }
-      });
-      // Keep the stream active briefly, then release
-      // The speech recognition should pick up the active device
-      setTimeout(() => {
-        stream.getTracks().forEach(track => track.stop());
-      }, 100);
+      // Always request microphone permission - this is required for Web Speech API
+      // in some browsers (like Arc) even when using the default device
+      const constraints = selectedDeviceId
+        ? { audio: { deviceId: { exact: selectedDeviceId } } }
+        : { audio: true };
+
+      console.log('[Mic] Requesting microphone access:', selectedDeviceId || 'default');
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+
+      // Keep the stream active - this helps ensure the mic stays "warm"
+      // for speech recognition in browsers like Arc
+      activeStreamRef.current = stream;
+      console.log('[Mic] Microphone activated successfully');
+
       return true;
     } catch (err) {
-      console.error('Failed to activate microphone:', err);
+      console.error('[Mic] Failed to activate microphone:', err);
+      // If exact device fails, try falling back to default
+      if (selectedDeviceId && err.name === 'OverconstrainedError') {
+        console.log('[Mic] Falling back to default microphone');
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          activeStreamRef.current = stream;
+          return true;
+        } catch (fallbackErr) {
+          console.error('[Mic] Fallback also failed:', fallbackErr);
+        }
+      }
       return false;
     }
   }, [selectedDeviceId]);
+
+  // Deactivate the microphone (call when stopping speech recognition)
+  const deactivateMicrophone = useCallback(() => {
+    if (activeStreamRef.current) {
+      console.log('[Mic] Releasing microphone stream');
+      activeStreamRef.current.getTracks().forEach(track => track.stop());
+      activeStreamRef.current = null;
+    }
+  }, []);
 
   return {
     devices,
     selectedDeviceId,
     selectDevice,
     activateMicrophone,
+    deactivateMicrophone,
     refreshDevices,
     isLoading,
     error,
