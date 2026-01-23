@@ -128,76 +128,66 @@
   color: rgba(255, 255, 255, 0.8);
 }
 
-/* Scoreboard */
+/* Scoreboard - optimized for active players */
+.app.gameplay {
+  padding: 1rem;
+  justify-content: flex-start;
+}
+
 .scoreboard {
   width: 100%;
-  max-width: 500px;
+  max-width: 600px;
+  min-height: calc(100vh - 2rem);
+  min-height: calc(100dvh - 2rem);
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 0.75rem;
 }
 
-/* Header */
-.header {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  gap: 1rem;
+/* Timer - large, like a gym scoreboard */
+.timer-display {
+  text-align: center;
 }
 
-.timer {
-  font-size: 1.75rem;
-  font-weight: 700;
+.timer-value {
+  font-size: 3.5rem;
+  font-weight: 800;
   font-variant-numeric: tabular-nums;
-  min-width: 5ch;
-}
-
-.session-high {
-  text-align: right;
-  justify-self: end;
-}
-
-.session-high .label {
-  display: block;
-  font-size: 0.625rem;
-  text-transform: uppercase;
-  letter-spacing: 0.15em;
-  opacity: 0.5;
-}
-
-.session-high .value {
-  font-size: 1.25rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.05em;
+  color: #ffd93d;
+  text-shadow: 0 0 30px rgba(255, 217, 61, 0.4);
 }
 
 /* Main score */
 .main-score {
   text-align: center;
-  padding: 1.5rem 0;
+  padding: 0.5rem 0;
+  flex-shrink: 0;
 }
 
 .main-score .score {
-  font-size: 7rem;
-  font-weight: 800;
+  font-size: 8rem;
+  font-weight: 900;
   line-height: 1;
   font-variant-numeric: tabular-nums;
-  min-width: 3ch;
+  min-width: 2ch;
   display: inline-block;
-  background: linear-gradient(180deg, #fff 0%, rgba(255,255,255,0.85) 100%);
+  background: linear-gradient(180deg, #fff 0%, rgba(255,255,255,0.9) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  text-shadow: none;
+  filter: drop-shadow(0 4px 20px rgba(255, 255, 255, 0.2));
 }
 
 /* Mode indicator */
 .mode-indicator {
   text-align: center;
-  font-size: 0.875rem;
-  font-weight: 700;
+  font-size: 1rem;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.2em;
-  padding: 0.625rem 1rem;
+  letter-spacing: 0.25em;
+  padding: 0.75rem 1.5rem;
   border-radius: 100px;
   width: fit-content;
   margin: 0 auto;
@@ -206,211 +196,226 @@
 .mode-indicator.multiplier {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
-  box-shadow: 0 2px 12px rgba(102, 126, 234, 0.35);
+  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.5);
 }
 
 .mode-indicator.point {
   background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
   color: white;
-  box-shadow: 0 2px 12px rgba(245, 87, 108, 0.35);
+  box-shadow: 0 4px 20px rgba(245, 87, 108, 0.5);
 }
 
-/* Stats row */
-.stats-row {
+/* Key stats - multiplier and misses, large and visual */
+.key-stats {
   display: flex;
   justify-content: center;
-  gap: 2rem;
-  min-height: 60px;
-  align-items: flex-start;
+  gap: 3rem;
+  padding: 1rem 0;
+  margin-top: auto;
 }
 
-.stat {
+.key-stat {
   text-align: center;
-  min-width: 65px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
 }
 
-.stat .label {
-  display: block;
-  font-size: 0.625rem;
-  text-transform: uppercase;
-  letter-spacing: 0.15em;
-  opacity: 0.5;
-  margin-bottom: 0.25rem;
-  white-space: nowrap;
-}
-
-.stat .value {
-  font-size: 1.5rem;
-  font-weight: 700;
+.key-stat-value {
+  font-size: 4rem;
+  font-weight: 800;
+  line-height: 1;
   font-variant-numeric: tabular-nums;
 }
 
-.stat .value.misses {
+.key-stat-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  opacity: 0.6;
+}
+
+/* Multiplier stat */
+.multiplier-stat .key-stat-value {
+  color: #a78bfa;
+  text-shadow: 0 0 30px rgba(167, 139, 250, 0.5);
+}
+
+/* Misses - visual dots */
+.misses-visual {
+  display: flex;
+  gap: 0.75rem;
+  font-size: 2.5rem;
+  line-height: 1;
+}
+
+.miss-dot {
+  transition: all 0.3s ease;
+}
+
+.miss-dot.active {
   color: #ff6b6b;
+  text-shadow: 0 0 20px rgba(255, 107, 107, 0.6);
 }
 
-.stat .value.freebies {
-  color: #38ef7d;
+.miss-dot.used {
+  color: rgba(255, 255, 255, 0.15);
+  text-shadow: none;
 }
 
-.stat.multiplier-shots {
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
-  padding: 0.5rem 0.75rem;
-  border-radius: 8px;
-  border: 1px solid rgba(102, 126, 234, 0.3);
+/* Bonus row */
+.bonus-row {
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem;
 }
 
-.stat.multiplier-shots .label {
-  color: #a8b4ff;
-  opacity: 1;
-  font-weight: 600;
+.bonus-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 100px;
+  font-size: 0.875rem;
 }
 
-.stat.multiplier-shots .value {
+.bonus-value {
+  font-weight: 800;
+  font-size: 1.25rem;
+}
+
+.bonus-label {
+  opacity: 0.8;
+}
+
+.multiplier-shots-bonus {
+  background: linear-gradient(135deg, rgba(167, 139, 250, 0.2) 0%, rgba(139, 92, 246, 0.2) 100%);
+  border: 1px solid rgba(167, 139, 250, 0.4);
   color: #c4b5fd;
 }
 
-/* Shot buttons */
-.shot-buttons {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-  margin-top: 0.5rem;
+.freebies-bonus {
+  background: linear-gradient(135deg, rgba(52, 211, 153, 0.2) 0%, rgba(16, 185, 129, 0.2) 100%);
+  border: 1px solid rgba(52, 211, 153, 0.4);
+  color: #6ee7b7;
 }
 
-.shot-button {
-  font-size: 1.25rem;
-  font-weight: 700;
-  padding: 1.75rem 1rem;
-  border: none;
-  border-radius: 16px;
-  cursor: pointer;
-  text-transform: uppercase;
-  letter-spacing: 0.15em;
-  transition: transform 0.1s ease, box-shadow 0.15s ease;
-  -webkit-tap-highlight-color: transparent;
-  user-select: none;
-}
-
-.shot-button:active {
-  transform: scale(0.97);
-}
-
-.shot-button.make {
-  background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-  color: white;
-  box-shadow: 0 4px 20px rgba(56, 239, 125, 0.3);
-}
-
-.shot-button.make:hover {
-  box-shadow: 0 8px 25px rgba(56, 239, 125, 0.4);
-  transform: translateY(-2px);
-}
-
-.shot-button.make:active {
-  box-shadow: 0 2px 10px rgba(56, 239, 125, 0.3);
-  transform: scale(0.97);
-}
-
-.shot-button.miss {
-  background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
-  color: white;
-  box-shadow: 0 4px 20px rgba(235, 51, 73, 0.3);
-}
-
-.shot-button.miss:hover {
-  box-shadow: 0 8px 25px rgba(235, 51, 73, 0.4);
-  transform: translateY(-2px);
-}
-
-.shot-button.miss:active {
-  box-shadow: 0 2px 10px rgba(235, 51, 73, 0.3);
-  transform: scale(0.97);
-}
-
-/* Mode actions */
-.mode-actions {
-  min-height: 56px;
-  display: flex;
-  align-items: center;
-}
-
-.mode-button {
+/* Mode switch prompt */
+.mode-switch-prompt {
   width: 100%;
-  font-size: 0.875rem;
-  font-weight: 600;
-  padding: 0.875rem 1rem;
-  background: rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 10px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.mode-button:hover {
-  background: rgba(255, 255, 255, 0.15);
-  border-color: rgba(255, 255, 255, 0.25);
-}
-
-.mode-button.highlight {
+  font-size: 1rem;
+  font-weight: 700;
+  padding: 1rem;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border: none;
   color: white;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
   animation: pulse 2s infinite;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.5);
 }
 
 @keyframes pulse {
   0%, 100% {
-    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    box-shadow: 0 4px 20px rgba(102, 126, 234, 0.5);
   }
   50% {
-    box-shadow: 0 4px 25px rgba(102, 126, 234, 0.6), 0 0 0 8px rgba(102, 126, 234, 0.1);
+    box-shadow: 0 4px 30px rgba(102, 126, 234, 0.7), 0 0 0 8px rgba(102, 126, 234, 0.15);
   }
 }
 
-/* Info text */
-.info-text {
-  font-size: 0.75rem;
-  text-align: center;
+/* Action buttons - smaller, secondary */
+.action-buttons {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: auto;
+}
+
+.action-btn {
+  flex: 1;
+  font-size: 0.875rem;
+  font-weight: 700;
+  padding: 1rem 0.5rem;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  transition: transform 0.1s ease, opacity 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+.action-btn:active {
+  transform: scale(0.97);
+}
+
+.make-btn {
+  background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+  color: white;
+}
+
+.miss-btn {
+  background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+  color: white;
+}
+
+.mode-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* Scoreboard footer */
+.scoreboard-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 0.5rem;
   opacity: 0.6;
-  margin: 0;
-  line-height: 1.5;
-  max-width: 320px;
-  margin: 0 auto;
+}
+
+.session-high-mini {
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
 }
 
 /* Responsive adjustments */
 @media (max-width: 380px) {
   .app {
-    padding: 1rem;
+    padding: 0.75rem;
+  }
+
+  .timer-value {
+    font-size: 2.5rem;
   }
 
   .main-score .score {
     font-size: 5rem;
   }
 
-  .shot-button {
-    font-size: 1rem;
-    padding: 1.25rem 0.5rem;
+  .key-stat-value {
+    font-size: 3rem;
   }
 
-  .timer {
-    font-size: 1.5rem;
-  }
-
-  .stats-row {
-    gap: 1rem;
-  }
-
-  .stat .value {
-    font-size: 1.25rem;
+  .misses-visual {
+    font-size: 2rem;
+    gap: 0.5rem;
   }
 
   .mode-indicator {
     font-size: 0.75rem;
-    padding: 0.5rem 0.75rem;
+    padding: 0.5rem 1rem;
+  }
+
+  .key-stats {
+    gap: 2rem;
+  }
+
+  .action-btn {
+    padding: 0.75rem 0.5rem;
+    font-size: 0.75rem;
   }
 }
 
@@ -419,21 +424,35 @@
     font-size: 2.5rem;
   }
 
+  .timer-value {
+    font-size: 5rem;
+  }
+
   .main-score .score {
-    font-size: 9rem;
+    font-size: 12rem;
   }
 
-  .shot-buttons {
-    gap: 1.5rem;
+  .key-stat-value {
+    font-size: 5rem;
   }
 
-  .shot-button {
-    padding: 2.5rem 2rem;
-    font-size: 1.5rem;
+  .misses-visual {
+    font-size: 3.5rem;
+    gap: 1rem;
   }
 
-  .scoreboard {
-    gap: 1.5rem;
+  .key-stats {
+    gap: 5rem;
+  }
+
+  .mode-indicator {
+    font-size: 1.25rem;
+    padding: 1rem 2rem;
+  }
+
+  .action-btn {
+    padding: 1.25rem 1rem;
+    font-size: 1rem;
   }
 }
 
