@@ -201,7 +201,7 @@ function App() {
     prevFreebiesRef.current = freebiesRemaining
   }, [gameActive, misses, freebiesRemaining, score, multiplier, multiplierShotsRemaining, mode, recordMiss])
 
-  // Audio feedback for score changes (makes)
+  // Audio feedback for score changes (makes in point mode)
   const audioScoreRef = useRef(score)
   useEffect(() => {
     if (!gameActive) {
@@ -213,6 +213,20 @@ function App() {
     }
     audioScoreRef.current = score
   }, [score, gameActive, playMake])
+
+  // Audio feedback for multiplier increases (makes in multiplier mode)
+  const audioMultiplierRef = useRef(multiplier)
+  useEffect(() => {
+    if (!gameActive) {
+      audioMultiplierRef.current = multiplier
+      return
+    }
+    // Play make sound when multiplier increases (making a shot in multiplier mode)
+    if (multiplier > audioMultiplierRef.current && mode === 'multiplier') {
+      playMake()
+    }
+    audioMultiplierRef.current = multiplier
+  }, [multiplier, mode, gameActive, playMake])
 
   // Audio feedback for misses
   const audioMissesRef = useRef(misses)
