@@ -17,6 +17,7 @@ Available actions:
 - "end_session" - End the current session
 - "pause" - Pause the timer
 - "resume" - Resume the timer (same as pause, it toggles)
+- "undo" - Undo the last action
 - "unknown" - Command not recognized
 
 Respond with ONLY a JSON object in this exact format:
@@ -32,6 +33,7 @@ Examples of voice commands and their actions:
 - "end", "stop", "finish", "end session" → {"action": "end_session", "confidence": 0.85}
 - "pause", "hold", "wait", "timeout", "time out" → {"action": "pause", "confidence": 0.9}
 - "resume", "continue", "go", "unpause", "play" → {"action": "resume", "confidence": 0.9}
+- "undo", "take back", "oops", "go back", "revert" → {"action": "undo", "confidence": 0.9}
 
 Be flexible with pronunciation and similar-sounding words. If unsure, return unknown with low confidence.`;
 
@@ -113,6 +115,7 @@ export default async (request: Request, _context: Context): Promise<Response> =>
       else if (lowerResponse.includes('end_session')) action = 'end_session';
       else if (lowerResponse.includes('pause')) action = 'pause';
       else if (lowerResponse.includes('resume')) action = 'resume';
+      else if (lowerResponse.includes('undo')) action = 'undo';
 
       return new Response(JSON.stringify({ action, confidence: 0.5 } satisfies VoiceCommandResponse), {
         headers: { 'Content-Type': 'application/json' }

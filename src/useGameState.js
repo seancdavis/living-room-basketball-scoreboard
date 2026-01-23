@@ -26,11 +26,61 @@ export function useGameState() {
   // eslint-disable-next-line no-unused-vars
   const [lastTenThreshold, setLastTenThreshold] = useState(0);
 
+  // History for undo functionality (stores snapshots of game state)
+  const [history, setHistory] = useState([]);
+  const [canUndo, setCanUndo] = useState(false);
+
   // Timer ref
   const timerRef = useRef(null);
 
+  // Save current game state to history before an action
+  const saveToHistory = useCallback(() => {
+    const snapshot = {
+      mode,
+      score,
+      multiplier,
+      multiplierShotsRemaining,
+      misses,
+      freebiesRemaining,
+      canEnterMultiplierMode,
+      lastTenThreshold,
+      sessionHighScore,
+    };
+    setHistory(prev => [...prev.slice(-19), snapshot]); // Keep last 20 states
+    setCanUndo(true);
+  }, [mode, score, multiplier, multiplierShotsRemaining, misses, freebiesRemaining, canEnterMultiplierMode, lastTenThreshold, sessionHighScore]);
+
+  // Undo the last action
+  const undo = useCallback(() => {
+    if (history.length === 0 || !gameActive) return false;
+
+    const prevState = history[history.length - 1];
+    setHistory(prev => prev.slice(0, -1));
+
+    // Restore state
+    setMode(prevState.mode);
+    setScore(prevState.score);
+    setMultiplier(prevState.multiplier);
+    setMultiplierShotsRemaining(prevState.multiplierShotsRemaining);
+    setMisses(prevState.misses);
+    setFreebiesRemaining(prevState.freebiesRemaining);
+    setCanEnterMultiplierMode(prevState.canEnterMultiplierMode);
+    setLastTenThreshold(prevState.lastTenThreshold);
+    setSessionHighScore(prevState.sessionHighScore);
+
+    setCanUndo(history.length > 1);
+    return true;
+  }, [history, gameActive]);
+
+  // Clear history when starting new game
+  const clearHistory = useCallback(() => {
+    setHistory([]);
+    setCanUndo(false);
+  }, []);
+
   // Start a new game within a session
   const startNewGame = useCallback(() => {
+    clearHistory();
     setGameActive(true);
     setMode('multiplier');
     setScore(0);
@@ -40,7 +90,7 @@ export function useGameState() {
     setFreebiesRemaining(0);
     setCanEnterMultiplierMode(true);
     setLastTenThreshold(0);
-  }, []);
+  }, [clearHistory]);
 
   // Start a new session
   const startSession = useCallback(() => {
@@ -105,6 +155,8 @@ export function useGameState() {
   const makeShot = useCallback(() => {
     if (!gameActive) return;
 
+    saveToHistory();
+
     if (mode === 'multiplier') {
       // In multiplier mode, making a shot increases the multiplier
       setMultiplier(prev => prev + 1);
@@ -142,11 +194,13 @@ export function useGameState() {
       // Update high score
       setSessionHighScore(prev => Math.max(prev, newScore));
     }
-  }, [gameActive, mode, score, multiplier, multiplierShotsRemaining]);
+  }, [gameActive, mode, score, multiplier, multiplierShotsRemaining, saveToHistory]);
 
   // Handle missing a shot
   const missShot = useCallback(() => {
     if (!gameActive) return;
+
+    saveToHistory();
 
     if (mode === 'multiplier') {
       // In multiplier mode, missing costs a miss
@@ -182,11 +236,13 @@ export function useGameState() {
         }
       }
     }
-  }, [gameActive, mode, misses, freebiesRemaining, multiplierShotsRemaining, endGame]);
+  }, [gameActive, mode, misses, freebiesRemaining, multiplierShotsRemaining, endGame, saveToHistory]);
 
   // Switch to point mode (from multiplier mode)
   const enterPointMode = useCallback(() => {
     if (mode !== 'multiplier') return;
+
+    saveToHistory();
 
     setMode('point');
     // Set multiplier shots to 5 if multiplier > 1
@@ -195,16 +251,18 @@ export function useGameState() {
     }
     setCanEnterMultiplierMode(false);
     setFreebiesRemaining(FREEBIES_AFTER_TEN); // Start of game, at "0" threshold
-  }, [mode, multiplier]);
+  }, [mode, multiplier, saveToHistory]);
 
   // Switch to multiplier mode (from point mode, when allowed)
   const enterMultiplierMode = useCallback(() => {
     if (!canEnterMultiplierMode || mode !== 'point') return;
 
+    saveToHistory();
+
     setMode('multiplier');
     setMultiplier(1); // Reset multiplier when entering multiplier mode
     setFreebiesRemaining(0);
-  }, [canEnterMultiplierMode, mode]);
+  }, [canEnterMultiplierMode, mode, saveToHistory]);
 
   // Continue shooting in point mode (forfeit multiplier mode entry)
   const continueInPointMode = useCallback(() => {
@@ -228,6 +286,7 @@ export function useGameState() {
     misses,
     freebiesRemaining,
     canEnterMultiplierMode,
+    canUndo,
 
     // Actions
     startSession,
@@ -239,5 +298,6 @@ export function useGameState() {
     enterPointMode,
     enterMultiplierMode,
     continueInPointMode,
+    undo,
   };
 }

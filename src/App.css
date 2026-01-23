@@ -427,6 +427,31 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Undo button */
+.undo-btn {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.4rem 0.75rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  transition: all 0.2s;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.undo-btn:hover:not(.disabled) {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.undo-btn.disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
 /* Responsive adjustments */
 @media (max-width: 380px) {
   .app {

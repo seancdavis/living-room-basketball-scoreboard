@@ -35,6 +35,8 @@ function App() {
     missShot,
     enterPointMode,
     enterMultiplierMode,
+    undo,
+    canUndo,
   } = useGameState()
 
   // Database tracking
@@ -61,7 +63,15 @@ function App() {
     playProcessing,
     playCommandRecognized,
     playCommandUnknown,
+    playUndo,
   } = useAudioFeedback()
+
+  // Wrap undo with sound
+  const undoWithSound = useCallback(() => {
+    if (undo()) {
+      playUndo()
+    }
+  }, [undo, playUndo])
 
   // Track game count and total points for session stats
   const gameCountRef = useRef(0)
@@ -79,16 +89,16 @@ function App() {
   }, [missShot])
 
   // Use refs to avoid stale closures in voice command handler
-  const gameStateRef = useRef({ gameActive, mode, sessionActive, canEnterMultiplierMode, paused })
-  const actionsRef = useRef({ makeShot, missShot: trackedMissShot, enterPointMode, enterMultiplierMode, startSession, startNewGame, endSession, togglePause })
+  const gameStateRef = useRef({ gameActive, mode, sessionActive, canEnterMultiplierMode, paused, canUndo })
+  const actionsRef = useRef({ makeShot, missShot: trackedMissShot, enterPointMode, enterMultiplierMode, startSession, startNewGame, endSession, togglePause, undo: undoWithSound })
 
   useEffect(() => {
-    gameStateRef.current = { gameActive, mode, sessionActive, canEnterMultiplierMode, paused }
-  }, [gameActive, mode, sessionActive, canEnterMultiplierMode, paused])
+    gameStateRef.current = { gameActive, mode, sessionActive, canEnterMultiplierMode, paused, canUndo }
+  }, [gameActive, mode, sessionActive, canEnterMultiplierMode, paused, canUndo])
 
   useEffect(() => {
-    actionsRef.current = { makeShot, missShot: trackedMissShot, enterPointMode, enterMultiplierMode, startSession, startNewGame, endSession, togglePause }
-  }, [makeShot, trackedMissShot, enterPointMode, enterMultiplierMode, startSession, startNewGame, endSession, togglePause])
+    actionsRef.current = { makeShot, missShot: trackedMissShot, enterPointMode, enterMultiplierMode, startSession, startNewGame, endSession, togglePause, undo: undoWithSound }
+  }, [makeShot, trackedMissShot, enterPointMode, enterMultiplierMode, startSession, startNewGame, endSession, togglePause, undoWithSound])
 
   // Track session lifecycle
   const prevSessionActiveRef = useRef(false)
@@ -263,10 +273,10 @@ function App() {
 
   // Handle voice commands - uses refs to always have current state
   const handleVoiceCommand = useCallback((action) => {
-    const { gameActive: ga, mode: m, sessionActive: sa, canEnterMultiplierMode: cemm, paused: p } = gameStateRef.current
-    const { makeShot: ms, missShot: miss, enterPointMode: epm, enterMultiplierMode: emm, startSession: ss, startNewGame: sng, endSession: es, togglePause: tp } = actionsRef.current
+    const { gameActive: ga, mode: m, sessionActive: sa, canEnterMultiplierMode: cemm, paused: p, canUndo: cu } = gameStateRef.current
+    const { makeShot: ms, missShot: miss, enterPointMode: epm, enterMultiplierMode: emm, startSession: ss, startNewGame: sng, endSession: es, togglePause: tp, undo: ud } = actionsRef.current
 
-    console.log('[App] Voice command received:', action, { gameActive: ga, mode: m, sessionActive: sa, canEnterMultiplierMode: cemm, paused: p })
+    console.log('[App] Voice command received:', action, { gameActive: ga, mode: m, sessionActive: sa, canEnterMultiplierMode: cemm, paused: p, canUndo: cu })
 
     switch (action) {
       case 'make':
@@ -332,6 +342,14 @@ function App() {
           tp()
         } else {
           console.log('[App] Ignored pause/resume - no active session')
+        }
+        break
+      case 'undo':
+        if (ga && cu) {
+          console.log('[App] Executing undo()')
+          ud()
+        } else {
+          console.log('[App] Ignored undo - conditions not met')
         }
         break
       default:
@@ -562,11 +580,18 @@ function App() {
           )}
         </div>
 
-        {/* Minimal footer with voice and session high */}
+        {/* Minimal footer with voice, undo, and session high */}
         <div className="scoreboard-footer">
           <div className="session-high-mini">
             High: {sessionHighScore}
           </div>
+          <button
+            className={`undo-btn ${canUndo ? '' : 'disabled'}`}
+            onClick={undoWithSound}
+            disabled={!canUndo}
+          >
+            ↩ UNDO
+          </button>
           <VoiceButton {...voiceButtonProps} compact />
         </div>
       </div>

@@ -140,6 +140,15 @@ export function useAudioFeedback() {
     playTone(600, 0.08, 'triangle', 0.2);
   }, [playTone]);
 
+  // Undo - rewind sound
+  const playUndo = useCallback(() => {
+    playSequence([
+      { frequency: 523.25, duration: 0.06, volume: 0.2 }, // C5
+      { frequency: 440, duration: 0.06, delay: 0.02, volume: 0.18 }, // A4
+      { frequency: 349.23, duration: 0.1, delay: 0.02, volume: 0.15 }, // F4
+    ]);
+  }, [playSequence]);
+
   return {
     playMake,
     playMiss,
@@ -152,5 +161,6 @@ export function useAudioFeedback() {
     playGameOver,
     playPassedTen,
     playPauseToggle,
+    playUndo,
   };
 }
