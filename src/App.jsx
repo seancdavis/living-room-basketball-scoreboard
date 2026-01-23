@@ -504,16 +504,13 @@ function App() {
     )
   }
 
-  // Active gameplay
+  // Active gameplay - mode class on app for background color shift
   return (
-    <div className="app gameplay">
+    <div className={`app gameplay mode-${mode}`}>
       <div className="scoreboard">
-        {/* Timer - large and prominent */}
-        <div className={`timer-display ${paused ? 'paused' : ''}`}>
+        {/* Timer row */}
+        <div className={`timer-row ${paused ? 'paused' : ''}`}>
           <span className="timer-value">{formatTime(timeRemaining)}</span>
-          <button className="pause-btn" onClick={togglePause}>
-            {paused ? '▶' : '⏸'}
-          </button>
         </div>
 
         {/* Paused overlay */}
@@ -521,17 +518,17 @@ function App() {
           <div className="paused-indicator">PAUSED</div>
         )}
 
+        {/* Mode indicator - large and prominent */}
+        <div className={`mode-banner ${mode}`}>
+          {mode === 'multiplier' ? 'MULTIPLIER MODE' : 'POINT MODE'}
+        </div>
+
         {/* Main score display */}
         <div className="main-score">
           <span className="score">{score}</span>
         </div>
 
-        {/* Mode indicator */}
-        <div className={`mode-indicator ${mode}`}>
-          {mode === 'multiplier' ? 'MULTIPLIER' : 'POINT MODE'}
-        </div>
-
-        {/* Key stats - large and visual */}
+        {/* Key stats - centered */}
         <div className="key-stats">
           {/* Multiplier */}
           <div className="key-stat multiplier-stat">
@@ -539,18 +536,22 @@ function App() {
             <span className="key-stat-label">multiplier</span>
           </div>
 
-          {/* Misses - visual circles */}
-          <div className="key-stat misses-stat">
-            <div className="misses-visual">
-              {[...Array(3)].map((_, i) => (
-                <span
-                  key={i}
-                  className={`miss-dot ${i < misses ? 'active' : 'used'}`}
-                >
-                  ●
-                </span>
-              ))}
-            </div>
+          {/* Lives - shows number when >3, dots otherwise */}
+          <div className="key-stat lives-stat">
+            {misses > 3 ? (
+              <span className="lives-number">{misses}</span>
+            ) : (
+              <div className="lives-visual">
+                {[...Array(3)].map((_, i) => (
+                  <span
+                    key={i}
+                    className={`life-dot ${i < misses ? 'active' : 'used'}`}
+                  >
+                    ●
+                  </span>
+                ))}
+              </div>
+            )}
             <span className="key-stat-label">lives</span>
           </div>
         </div>
@@ -573,35 +574,43 @@ function App() {
           </div>
         )}
 
-        {/* Mode switch prompt */}
+        {/* Session high - subtle */}
+        <div className="session-high-inline">
+          High: {sessionHighScore}
+        </div>
+      </div>
+
+      {/* Controls - fixed at bottom */}
+      <div className="controls-bar">
+        {/* Mode switch prompt when available */}
         {mode === 'point' && canEnterMultiplierMode && (
-          <button className="mode-switch-prompt" onClick={enterMultiplierMode}>
-            ✨ Enter Multiplier Mode
+          <button className="mode-switch-btn" onClick={enterMultiplierMode}>
+            ✨ MULTIPLIER MODE
           </button>
         )}
 
-        {/* Action buttons - smaller, at bottom */}
-        <div className="action-buttons">
+        {/* Main action buttons */}
+        <div className="action-row">
           <button className="action-btn make-btn" onClick={makeShot}>
             MAKE
           </button>
           <button className="action-btn miss-btn" onClick={trackedMissShot}>
             MISS
           </button>
+        </div>
+
+        {/* Secondary controls row */}
+        <div className="secondary-row">
           {mode === 'multiplier' && (
-            <button className="action-btn mode-btn" onClick={enterPointMode}>
+            <button className="secondary-btn mode-btn" onClick={enterPointMode}>
               → POINTS
             </button>
           )}
-        </div>
-
-        {/* Minimal footer with voice, undo, and session high */}
-        <div className="scoreboard-footer">
-          <div className="session-high-mini">
-            High: {sessionHighScore}
-          </div>
+          <button className="secondary-btn pause-btn" onClick={togglePause}>
+            {paused ? '▶ RESUME' : '⏸ PAUSE'}
+          </button>
           <button
-            className={`undo-btn ${canUndo ? '' : 'disabled'}`}
+            className={`secondary-btn undo-btn ${canUndo ? '' : 'disabled'}`}
             onClick={undoWithSound}
             disabled={!canUndo}
           >
