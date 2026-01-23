@@ -154,7 +154,7 @@
 }
 
 .timer-value {
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'Bebas Neue', sans-serif;
   font-size: 3.5rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -194,7 +194,7 @@
 
 .paused-indicator {
   text-align: center;
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'Bebas Neue', sans-serif;
   font-size: 1.5rem;
   font-weight: 700;
   letter-spacing: 0.3em;
@@ -210,7 +210,7 @@
 }
 
 .main-score .score {
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'Bebas Neue', sans-serif;
   font-size: 8rem;
   font-weight: 900;
   line-height: 1;
@@ -268,7 +268,7 @@
 }
 
 .key-stat-value {
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'Bebas Neue', sans-serif;
   font-size: 4rem;
   font-weight: 700;
   line-height: 1;
