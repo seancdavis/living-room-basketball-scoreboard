@@ -77,6 +77,138 @@
   opacity: 0.8;
 }
 
+/* Session complete banner */
+.session-complete-banner {
+  font-size: 1.25rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: #ffd93d;
+  text-shadow: 0 0 20px rgba(255, 217, 61, 0.4);
+}
+
+/* Final shot section */
+.final-shot-section {
+  width: 100%;
+  max-width: 280px;
+  padding: 1rem;
+  background: rgba(255, 217, 61, 0.1);
+  border: 1px solid rgba(255, 217, 61, 0.3);
+  border-radius: 12px;
+}
+
+.final-shot-prompt {
+  font-size: 0.875rem;
+  margin: 0 0 0.75rem;
+  text-align: center;
+  opacity: 0.9;
+}
+
+.final-shot-buttons {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.final-shot-buttons .action-btn {
+  flex: 1;
+  padding: 0.875rem 0.5rem;
+}
+
+/* Ended session view */
+.ended-session {
+  max-width: 600px;
+}
+
+.session-date {
+  font-size: 0.875rem;
+  opacity: 0.6;
+  margin-bottom: 1rem;
+}
+
+.session-stats {
+  display: flex;
+  gap: 1.5rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+
+.stat-item {
+  text-align: center;
+  min-width: 80px;
+}
+
+.stat-value {
+  display: block;
+  font-size: 2.5rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+}
+
+.stat-label {
+  display: block;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  opacity: 0.6;
+}
+
+.games-breakdown {
+  width: 100%;
+  max-width: 400px;
+  text-align: left;
+  margin-bottom: 1.5rem;
+}
+
+.games-breakdown h3 {
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  opacity: 0.6;
+  margin-bottom: 0.75rem;
+}
+
+.games-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.game-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  font-size: 0.875rem;
+}
+
+.game-number {
+  font-weight: 600;
+  opacity: 0.6;
+  min-width: 2rem;
+}
+
+.game-score {
+  font-weight: 700;
+  color: #38ef7d;
+  min-width: 4rem;
+}
+
+.game-multiplier {
+  color: #a78bfa;
+  min-width: 4rem;
+}
+
+.game-stats {
+  opacity: 0.6;
+  font-size: 0.75rem;
+  flex: 1;
+  text-align: right;
+}
+
 /* Button row for game over */
 .game-over-buttons {
   display: flex;

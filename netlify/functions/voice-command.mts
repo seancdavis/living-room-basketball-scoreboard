@@ -10,6 +10,8 @@ The app has two modes:
 Available actions:
 - "make" - Player made a shot
 - "miss" - Player missed a shot
+- "tip_make" - Player made a tip-in (jumped and tipped the ball before it hit the ground)
+- "tip_miss" - Player attempted but missed a tip-in
 - "enter_point_mode" - Switch from multiplier mode to point mode
 - "enter_multiplier_mode" - Switch from point mode to multiplier mode (only allowed after passing a multiple of 10)
 - "start_session" - Start a new 10-minute session
@@ -26,6 +28,8 @@ Respond with ONLY a JSON object in this exact format:
 Examples of voice commands and their actions:
 - "made it", "swish", "yes", "got it", "make", "in", "score" → {"action": "make", "confidence": 0.95}
 - "missed", "miss", "no", "brick", "air ball", "out" → {"action": "miss", "confidence": 0.95}
+- "tip in", "tipped it in", "tip make", "tipped in" → {"action": "tip_make", "confidence": 0.95}
+- "tip miss", "tipped miss", "missed the tip" → {"action": "tip_miss", "confidence": 0.95}
 - "point mode", "points", "go to points", "switch to points" → {"action": "enter_point_mode", "confidence": 0.9}
 - "multiplier mode", "multiplier", "go to multiplier", "build multiplier" → {"action": "enter_multiplier_mode", "confidence": 0.9}
 - "start", "begin", "let's go", "start session" → {"action": "start_session", "confidence": 0.85}
@@ -106,7 +110,9 @@ export default async (request: Request, _context: Context): Promise<Response> =>
       const lowerResponse = responseText.toLowerCase();
       let action = 'unknown';
 
-      if (lowerResponse.includes('make')) action = 'make';
+      if (lowerResponse.includes('tip_make')) action = 'tip_make';
+      else if (lowerResponse.includes('tip_miss')) action = 'tip_miss';
+      else if (lowerResponse.includes('make')) action = 'make';
       else if (lowerResponse.includes('miss')) action = 'miss';
       else if (lowerResponse.includes('point_mode')) action = 'enter_point_mode';
       else if (lowerResponse.includes('multiplier_mode')) action = 'enter_multiplier_mode';

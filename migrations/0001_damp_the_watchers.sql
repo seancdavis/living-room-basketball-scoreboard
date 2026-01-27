@@ -1,0 +1,1 @@
+ALTER TABLE "events" ADD COLUMN "is_tip_in" boolean DEFAULT false;

@@ -12,6 +12,12 @@ export function useGameState() {
   const [sessionHighScore, setSessionHighScore] = useState(0);
   const [paused, setPaused] = useState(false);
 
+  // Final shot state - for adding a shot after session timer expires
+  const [sessionEndedByTimer, setSessionEndedByTimer] = useState(false);
+  const [finalShotAvailable, setFinalShotAvailable] = useState(false);
+  const [finalShotUsed, setFinalShotUsed] = useState(false);
+  const finalShotTimerRef = useRef(null);
+
   // Game state
   const [gameActive, setGameActive] = useState(false);
   const [mode, setMode] = useState('multiplier'); // 'multiplier' or 'point'
@@ -23,7 +29,6 @@ export function useGameState() {
   const [canEnterMultiplierMode, setCanEnterMultiplierMode] = useState(true);
 
   // Track the last ten threshold passed (0, 10, 20, etc.)
-  // eslint-disable-next-line no-unused-vars
   const [lastTenThreshold, setLastTenThreshold] = useState(0);
 
   // History for undo functionality (stores snapshots of game state)
@@ -32,6 +37,49 @@ export function useGameState() {
 
   // Timer ref
   const timerRef = useRef(null);
+
+  // Hydration flag to prevent double initialization
+  const hydratedRef = useRef(false);
+
+  // Hydrate state from server data
+  const hydrateFromServer = useCallback((serverData) => {
+    if (!serverData || hydratedRef.current) return;
+    hydratedRef.current = true;
+
+    const { gameState, timeRemaining: serverTimeRemaining, isPaused, highScore, currentGame } = serverData;
+
+    // Set session state
+    setSessionActive(true);
+    setTimeRemaining(serverTimeRemaining ?? SESSION_DURATION);
+    setSessionHighScore(highScore ?? 0);
+    setPaused(isPaused ?? false);
+
+    // Set game state if there's an active game
+    if (gameState && currentGame?.isActive) {
+      setGameActive(true);
+      setMode(gameState.mode ?? 'multiplier');
+      setScore(gameState.score ?? 0);
+      setMultiplier(gameState.multiplier ?? 1);
+      setMultiplierShotsRemaining(gameState.multiplierShotsRemaining ?? 0);
+      setMisses(gameState.misses ?? INITIAL_MISSES);
+      setFreebiesRemaining(gameState.freebiesRemaining ?? 0);
+      setLastTenThreshold(Math.floor((gameState.score ?? 0) / 10) * 10);
+      // After passing a 10, can enter multiplier mode
+      setCanEnterMultiplierMode((gameState.freebiesRemaining ?? 0) > 0);
+    } else {
+      // No active game - show game over state
+      setGameActive(false);
+    }
+
+    // Clear history when hydrating
+    setHistory([]);
+    setCanUndo(false);
+  }, []);
+
+  // Reset hydration flag when session ends
+  const resetHydration = useCallback(() => {
+    hydratedRef.current = false;
+  }, []);
 
   // Save current game state to history before an action
   const saveToHistory = useCallback(() => {
@@ -97,6 +145,12 @@ export function useGameState() {
     setSessionActive(true);
     setTimeRemaining(SESSION_DURATION);
     setSessionHighScore(0);
+    setSessionEndedByTimer(false);
+    setFinalShotAvailable(false);
+    setFinalShotUsed(false);
+    if (finalShotTimerRef.current) {
+      clearTimeout(finalShotTimerRef.current);
+    }
     startNewGame();
   }, [startNewGame]);
 
@@ -139,10 +193,28 @@ export function useGameState() {
 
       return () => clearInterval(timerRef.current);
     } else if (timeRemaining === 0 && sessionActive) {
+      // Session ended due to timer - enable final shot window
       // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSessionEndedByTimer(true);
+      setFinalShotAvailable(true);
+      setFinalShotUsed(false);
       endSession();
+
+      // Auto-hide final shot option after 60 seconds
+      finalShotTimerRef.current = setTimeout(() => {
+        setFinalShotAvailable(false);
+      }, 60000);
     }
   }, [sessionActive, timeRemaining, paused, endSession]);
+
+  // Cleanup final shot timer
+  useEffect(() => {
+    return () => {
+      if (finalShotTimerRef.current) {
+        clearTimeout(finalShotTimerRef.current);
+      }
+    };
+  }, []);
 
   // Calculate misses to add when passing tens
   const calculateMissesGained = (prevScore, newScore) => {
@@ -166,6 +238,8 @@ export function useGameState() {
       const pointsToAdd = multiplierShotsRemaining > 0 ? multiplier : 1;
       const newScore = score + pointsToAdd;
 
+      console.log('[makeShot] Scoring:', { prevScore, pointsToAdd, newScore, multiplier, multiplierShotsRemaining });
+
       setScore(newScore);
 
       // Decrease multiplier shots if using multiplier
@@ -180,8 +254,13 @@ export function useGameState() {
 
       // Check if we passed a multiple of 10
       const missesGained = calculateMissesGained(prevScore, newScore);
+      console.log('[makeShot] Lives check:', { prevScore, newScore, missesGained, currentMisses: misses });
       if (missesGained > 0) {
-        setMisses(prev => prev + missesGained);
+        setMisses(prev => {
+          const newMisses = prev + missesGained;
+          console.log('[makeShot] Adding lives:', { prev, missesGained, newMisses });
+          return newMisses;
+        });
         setFreebiesRemaining(FREEBIES_AFTER_TEN);
         setCanEnterMultiplierMode(true);
         setLastTenThreshold(Math.floor(newScore / 10) * 10);
@@ -194,7 +273,7 @@ export function useGameState() {
       // Update high score
       setSessionHighScore(prev => Math.max(prev, newScore));
     }
-  }, [gameActive, mode, score, multiplier, multiplierShotsRemaining, saveToHistory]);
+  }, [gameActive, mode, score, multiplier, multiplierShotsRemaining, misses, saveToHistory]);
 
   // Handle missing a shot
   const missShot = useCallback(() => {
@@ -270,12 +349,52 @@ export function useGameState() {
     setCanEnterMultiplierMode(false);
   }, [canEnterMultiplierMode, mode]);
 
+  // Add a final make after session timer expired
+  const addFinalMake = useCallback(() => {
+    if (!finalShotAvailable || finalShotUsed) return null;
+
+    // Calculate points to add (use current mode logic)
+    const pointsToAdd = multiplierShotsRemaining > 0 ? multiplier : 1;
+    const newScore = score + pointsToAdd;
+
+    setScore(newScore);
+    setSessionHighScore(prev => Math.max(prev, newScore));
+    setFinalShotUsed(true);
+    setFinalShotAvailable(false);
+
+    if (finalShotTimerRef.current) {
+      clearTimeout(finalShotTimerRef.current);
+    }
+
+    return { pointsAdded: pointsToAdd, newScore };
+  }, [finalShotAvailable, finalShotUsed, score, multiplier, multiplierShotsRemaining]);
+
+  // Add a final miss after session timer expired
+  const addFinalMiss = useCallback(() => {
+    if (!finalShotAvailable || finalShotUsed) return false;
+
+    // Miss doesn't change score, but we track it
+    setFinalShotUsed(true);
+    setFinalShotAvailable(false);
+
+    if (finalShotTimerRef.current) {
+      clearTimeout(finalShotTimerRef.current);
+    }
+
+    return true;
+  }, [finalShotAvailable, finalShotUsed]);
+
   return {
     // Session state
     sessionActive,
     timeRemaining,
     sessionHighScore,
     paused,
+
+    // Final shot state
+    sessionEndedByTimer,
+    finalShotAvailable,
+    finalShotUsed,
 
     // Game state
     gameActive,
@@ -299,5 +418,10 @@ export function useGameState() {
     enterMultiplierMode,
     continueInPointMode,
     undo,
+    addFinalMake,
+    addFinalMiss,
+    // Hydration
+    hydrateFromServer,
+    resetHydration,
   };
 }

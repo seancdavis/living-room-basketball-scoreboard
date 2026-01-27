@@ -19,6 +19,11 @@ export default async (req: Request, context: Context) => {
         sessionId,
       }).returning();
 
+      // Set this as the current game on the session
+      await db.update(sessions)
+        .set({ currentGameId: game.id })
+        .where(eq(sessions.id, sessionId));
+
       // Create the game_start event
       await db.insert(events).values({
         gameId: game.id,
@@ -39,44 +44,71 @@ export default async (req: Request, context: Context) => {
     }
   }
 
-  // PUT - Update/end a game
+  // PUT - Update/end a game or update current game state
   if (method === "PUT") {
     try {
       const body = await req.json();
       const {
         gameId,
+        // Current state fields (for live updates)
+        currentScore,
+        currentMultiplier,
+        currentMultiplierShotsRemaining,
+        currentMisses,
+        currentFreebiesRemaining,
+        currentMode,
+        // Final stats (for game ending)
         finalScore,
         highMultiplier,
         totalMakes,
         totalMisses,
         durationSeconds,
-        endReason
+        endReason,
+        ended, // Flag to indicate game is ending
       } = body;
 
       if (!gameId) {
         return Response.json({ error: "gameId is required" }, { status: 400 });
       }
 
+      // Build update object dynamically
+      const updateData: Record<string, any> = {};
+
+      // Current state updates
+      if (currentScore !== undefined) updateData.currentScore = currentScore;
+      if (currentMultiplier !== undefined) updateData.currentMultiplier = currentMultiplier;
+      if (currentMultiplierShotsRemaining !== undefined) updateData.currentMultiplierShotsRemaining = currentMultiplierShotsRemaining;
+      if (currentMisses !== undefined) updateData.currentMisses = currentMisses;
+      if (currentFreebiesRemaining !== undefined) updateData.currentFreebiesRemaining = currentFreebiesRemaining;
+      if (currentMode !== undefined) updateData.currentMode = currentMode;
+
+      // Final stats updates
+      if (finalScore !== undefined) updateData.finalScore = finalScore;
+      if (highMultiplier !== undefined) updateData.highMultiplier = highMultiplier;
+      if (totalMakes !== undefined) updateData.totalMakes = totalMakes;
+      if (totalMisses !== undefined) updateData.totalMisses = totalMisses;
+      if (durationSeconds !== undefined) updateData.durationSeconds = durationSeconds;
+      if (endReason !== undefined) updateData.endReason = endReason;
+
+      // If ending the game
+      if (ended) {
+        updateData.endedAt = new Date();
+        updateData.isActive = false;
+      }
+
       const [game] = await db.update(games)
-        .set({
-          finalScore,
-          highMultiplier,
-          totalMakes,
-          totalMisses,
-          durationSeconds,
-          endReason,
-          endedAt: new Date(),
-        })
+        .set(updateData)
         .where(eq(games.id, gameId))
         .returning();
 
-      // Update session stats
-      if (game) {
+      // If ending the game, update session stats and clear currentGameId
+      if (ended && game) {
         await db.update(sessions)
           .set({
             totalGames: sql`${sessions.totalGames} + 1`,
             totalPoints: sql`${sessions.totalPoints} + ${finalScore || 0}`,
             highScore: sql`GREATEST(${sessions.highScore}, ${finalScore || 0})`,
+            currentGameId: null,
           })
           .where(eq(sessions.id, game.sessionId));
       }

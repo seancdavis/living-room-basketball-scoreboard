@@ -26,19 +26,36 @@ export default async (req: Request, context: Context) => {
   if (method === "PUT") {
     try {
       const body = await req.json();
-      const { sessionId, highScore, totalGames, totalPoints } = body;
+      const {
+        sessionId,
+        highScore,
+        totalGames,
+        totalPoints,
+        isPaused,
+        pausedAt,
+        totalPausedMs,
+        currentGameId,
+        ended,
+      } = body;
 
       if (!sessionId) {
         return Response.json({ error: "sessionId is required" }, { status: 400 });
       }
 
+      // Build update object dynamically based on provided fields
+      const updateData: Record<string, any> = {};
+
+      if (highScore !== undefined) updateData.highScore = highScore;
+      if (totalGames !== undefined) updateData.totalGames = totalGames;
+      if (totalPoints !== undefined) updateData.totalPoints = totalPoints;
+      if (isPaused !== undefined) updateData.isPaused = isPaused;
+      if (pausedAt !== undefined) updateData.pausedAt = pausedAt ? new Date(pausedAt) : null;
+      if (totalPausedMs !== undefined) updateData.totalPausedMs = totalPausedMs;
+      if (currentGameId !== undefined) updateData.currentGameId = currentGameId;
+      if (ended) updateData.endedAt = new Date();
+
       const [session] = await db.update(sessions)
-        .set({
-          highScore,
-          totalGames,
-          totalPoints,
-          endedAt: new Date(),
-        })
+        .set(updateData)
         .where(eq(sessions.id, sessionId))
         .returning();
 
@@ -66,7 +83,7 @@ export default async (req: Request, context: Context) => {
       }
 
       // Get single session with games
-      const session = await db.query.sessions.findFirst({
+      let session = await db.query.sessions.findFirst({
         where: eq(sessions.id, sessionId),
       });
 
@@ -74,12 +91,69 @@ export default async (req: Request, context: Context) => {
         return Response.json({ error: "Session not found" }, { status: 404 });
       }
 
+      // Check if session should be auto-ended (timer expired while user was away)
+      if (!session.endedAt) {
+        const now = Date.now();
+        const startedAtMs = new Date(session.startedAt).getTime();
+        const durationMs = session.durationSeconds * 1000;
+        const totalPausedMs = session.totalPausedMs || 0;
+
+        // Calculate elapsed time
+        let elapsedMs: number;
+        if (session.isPaused && session.pausedAt) {
+          // If paused, calculate elapsed up to pause time
+          elapsedMs = new Date(session.pausedAt).getTime() - startedAtMs - totalPausedMs;
+        } else {
+          // If running, calculate elapsed up to now
+          elapsedMs = now - startedAtMs - totalPausedMs;
+        }
+
+        // If elapsed time exceeds duration, auto-end the session
+        if (elapsedMs >= durationMs) {
+          const [updatedSession] = await db.update(sessions)
+            .set({ endedAt: new Date() })
+            .where(eq(sessions.id, sessionId))
+            .returning();
+          session = updatedSession;
+        }
+      }
+
+      // Get all games for this session
       const sessionGames = await db.query.games.findMany({
         where: eq(games.sessionId, sessionId),
         orderBy: (games, { asc }) => [asc(games.startedAt)],
       });
 
-      return Response.json({ session, games: sessionGames });
+      // Find the current active game if any
+      const currentGame = session.currentGameId
+        ? sessionGames.find(g => g.id === session.currentGameId)
+        : null;
+
+      // Calculate time remaining
+      let timeRemaining: number | null = null;
+      if (!session.endedAt) {
+        const now = Date.now();
+        const startedAtMs = new Date(session.startedAt).getTime();
+        const durationMs = session.durationSeconds * 1000;
+        const totalPausedMs = session.totalPausedMs || 0;
+
+        let elapsedMs: number;
+        if (session.isPaused && session.pausedAt) {
+          elapsedMs = new Date(session.pausedAt).getTime() - startedAtMs - totalPausedMs;
+        } else {
+          elapsedMs = now - startedAtMs - totalPausedMs;
+        }
+
+        timeRemaining = Math.max(0, Math.floor((durationMs - elapsedMs) / 1000));
+      }
+
+      return Response.json({
+        session,
+        games: sessionGames,
+        currentGame,
+        timeRemaining,
+        isEnded: !!session.endedAt,
+      });
     } catch (error) {
       console.error("Error fetching session:", error);
       return Response.json({ error: "Failed to fetch session" }, { status: 500 });

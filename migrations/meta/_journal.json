@@ -8,6 +8,20 @@
       "when": 1769027394017,
       "tag": "0000_strange_vertigo",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1769252051703,
+      "tag": "0001_damp_the_watchers",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1769252370960,
+      "tag": "0002_true_khan",
+      "breakpoints": true
     }
   ]
 }

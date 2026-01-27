@@ -221,7 +221,7 @@ export function useGameTracking() {
   }, []);
 
   // Helper to record a make event
-  const recordMake = useCallback((state) => {
+  const recordMake = useCallback((state, isTipIn = false) => {
     recordEvent({
       eventType: 'make',
       score: state.score,
@@ -231,11 +231,12 @@ export function useGameTracking() {
       freebiesRemaining: state.freebiesRemaining,
       mode: state.mode,
       pointsEarned: state.pointsEarned || 0,
+      isTipIn,
     });
   }, [recordEvent]);
 
   // Helper to record a miss event
-  const recordMiss = useCallback((state, usedFreebie = false) => {
+  const recordMiss = useCallback((state, usedFreebie = false, isTipIn = false) => {
     recordEvent({
       eventType: 'miss',
       score: state.score,
@@ -245,6 +246,7 @@ export function useGameTracking() {
       freebiesRemaining: state.freebiesRemaining,
       mode: state.mode,
       usedFreebie,
+      isTipIn,
     });
   }, [recordEvent]);
 
@@ -263,6 +265,49 @@ export function useGameTracking() {
     });
   }, [recordEvent]);
 
+  // Sync current game state to server (for persistence)
+  const syncGameState = useCallback(async (state) => {
+    if (!gameIdRef.current) return;
+
+    try {
+      await fetch('/.netlify/functions/game', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          gameId: gameIdRef.current,
+          currentScore: state.score,
+          currentMultiplier: state.multiplier,
+          currentMultiplierShotsRemaining: state.multiplierShotsRemaining,
+          currentMisses: state.misses,
+          currentFreebiesRemaining: state.freebiesRemaining,
+          currentMode: state.mode,
+        }),
+      });
+    } catch (error) {
+      console.error('Failed to sync game state:', error);
+    }
+  }, []);
+
+  // Sync session pause state to server
+  const syncSessionPause = useCallback(async (isPaused, pausedAt, totalPausedMs) => {
+    if (!sessionIdRef.current) return;
+
+    try {
+      await fetch('/.netlify/functions/session', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: sessionIdRef.current,
+          isPaused,
+          pausedAt: pausedAt ? new Date(pausedAt).toISOString() : null,
+          totalPausedMs,
+        }),
+      });
+    } catch (error) {
+      console.error('Failed to sync session pause state:', error);
+    }
+  }, []);
+
   return {
     createSession,
     endSessionTracking,
@@ -271,8 +316,15 @@ export function useGameTracking() {
     recordMake,
     recordMiss,
     recordModeChange,
+    syncGameState,
+    syncSessionPause,
     // Expose refs for checking state
     hasActiveSession: () => !!sessionIdRef.current,
     hasActiveGame: () => !!gameIdRef.current,
+    getSessionId: () => sessionIdRef.current,
+    getGameId: () => gameIdRef.current,
+    // For hydration
+    setSessionId: (id) => { sessionIdRef.current = id; },
+    setGameId: (id) => { gameIdRef.current = id; },
   };
 }

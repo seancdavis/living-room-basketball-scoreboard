@@ -12,6 +12,14 @@ export const sessions = pgTable('sessions', {
   // Duration
   durationSeconds: integer('duration_seconds').notNull().default(600), // Default 10 min
 
+  // Pause state (for calculating time remaining on page load)
+  isPaused: boolean('is_paused').notNull().default(false),
+  pausedAt: timestamp('paused_at'),
+  totalPausedMs: integer('total_paused_ms').notNull().default(0),
+
+  // Current active game (if any)
+  currentGameId: uuid('current_game_id'),
+
   // Timestamps
   startedAt: timestamp('started_at').notNull().defaultNow(),
   endedAt: timestamp('ended_at'),
@@ -26,7 +34,16 @@ export const games = pgTable('games', {
   // Session info
   sessionId: uuid('session_id').notNull().references(() => sessions.id, { onDelete: 'cascade' }),
 
-  // Game results
+  // Current game state (for restoring on page refresh)
+  currentScore: integer('current_score').notNull().default(0),
+  currentMultiplier: integer('current_multiplier').notNull().default(1),
+  currentMultiplierShotsRemaining: integer('current_multiplier_shots_remaining').notNull().default(0),
+  currentMisses: integer('current_misses').notNull().default(3),
+  currentFreebiesRemaining: integer('current_freebies_remaining').notNull().default(0),
+  currentMode: text('current_mode').notNull().default('multiplier'), // 'multiplier' or 'point'
+  isActive: boolean('is_active').notNull().default(true),
+
+  // Game results (final stats after game ends)
   finalScore: integer('final_score').notNull().default(0),
   highMultiplier: integer('high_multiplier').notNull().default(1),
   totalMakes: integer('total_makes').notNull().default(0),
@@ -69,6 +86,9 @@ export const events = pgTable('events', {
 
   // Was this a freebie miss?
   usedFreebie: boolean('used_freebie').default(false),
+
+  // Was this a tip-in (jumped and tipped ball before it hit ground)?
+  isTipIn: boolean('is_tip_in').default(false),
 
   // Timestamp
   occurredAt: timestamp('occurred_at').notNull().defaultNow(),

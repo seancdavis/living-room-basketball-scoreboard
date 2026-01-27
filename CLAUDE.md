@@ -13,19 +13,21 @@ A React-based scoreboard app for tracking basketball shooting games with voice c
 
 ```
 src/
-  App.jsx           - Main component, game UI, integrates all hooks
+  App.jsx           - Main component with routing, game UI, state hydration
   App.css           - All styling (gradient backgrounds, responsive layout)
-  useGameState.js   - Core game logic (scoring, multipliers, modes, misses)
-  useGameTracking.js - Database tracking hook (sessions, games, events)
+  useGameState.js   - Core game logic (scoring, multipliers, modes, misses, hydration)
+  useGameTracking.js - Database tracking hook (sessions, games, events, state sync)
+  useServerState.js - Server state fetching and hydration utilities
   useVoiceControl.js - Voice recognition + Anthropic API for commands
   useMicrophoneSelector.js - Mic device enumeration, localStorage persistence
   VoiceButton.jsx   - Voice control UI with mic settings dropdown
+  History.jsx       - Session history view
 
 netlify/functions/
-  session.mts       - POST/PUT/GET for sessions
-  game.mts          - POST/PUT/GET for games
-  event.mts         - POST/PUT for recording events
-  voice.mts         - Anthropic API for voice command processing
+  session.mts       - POST/PUT/GET for sessions (includes pause state, auto-end)
+  game.mts          - POST/PUT/GET for games (includes current state sync)
+  event.mts         - POST/PUT for recording events (includes isTipIn)
+  voice-command.mts - Anthropic API for voice command processing
 
 db/
   schema.ts         - Drizzle schema (sessions, games, events tables)
@@ -68,8 +70,12 @@ Supported voice commands (processed by Anthropic):
 - "start" / "begin" - Start session or new game
 - "make" / "score" / "yes" - Record a made shot
 - "miss" / "no" - Record a missed shot
+- "tip in" / "tipped it in" - Record a tip-in make
+- "tip miss" - Record a tip-in miss
 - "point mode" / "points" - Switch to point mode
 - "multiplier mode" / "multiplier" - Switch to multiplier mode (when allowed)
+- "undo" / "take back" - Undo last action
+- "pause" / "resume" - Pause/resume timer
 - "end" / "stop" - End session
 
 ## Key Implementation Details
@@ -86,6 +92,56 @@ Voice commands use refs (`gameStateRef`, `actionsRef`) to avoid stale closures i
 - Uses `navigator.mediaDevices.enumerateDevices()`
 - Persists selection to localStorage
 - `activateMicrophone` function passed to voice control for proper device selection
+
+## URL Routing
+
+The app uses react-router-dom for URL-based session management:
+- `/` - Home screen (start new session or view history)
+- `/session/:sessionId` - Active or ended session view
+
+When starting a new session, the app navigates to `/session/:id`. URLs are shareable/bookmarkable and state persists across page refreshes.
+
+## Server-Driven State
+
+Game state is persisted on the server for refresh recovery:
+
+### Session State (stored in sessions table)
+- `isPaused`, `pausedAt`, `totalPausedMs` - For calculating time remaining
+- `currentGameId` - Active game reference
+
+### Game State (stored in games table)
+- `currentScore`, `currentMultiplier`, `currentMisses`, etc. - Live game state
+- `isActive` - Whether game is still in progress
+
+### Timer Calculation
+Time remaining is calculated from timestamps on page load:
+```javascript
+if (isPaused) {
+  elapsed = pausedAt - sessionStartedAt - totalPausedMs
+} else {
+  elapsed = now - sessionStartedAt - totalPausedMs
+}
+timeRemaining = 600 - (elapsed / 1000)
+```
+
+### State Sync
+- Game state syncs to server with 500ms debounce
+- Pause/resume syncs immediately with timestamps
+- Session auto-ends if timer expired while page was closed
+
+## Special Features
+
+### Tip-In Tracking
+Events can be marked as tip-ins (jumped and tipped ball before it hit ground). This is metadata only - doesn't affect scoring. Voice commands: "tip in", "tip miss"
+
+### Final Shot After Timer
+When session timer expires, user has 60 seconds to add one final shot (make/miss) that may have counted at the buzzer.
+
+### Read-Only Session View
+Ended sessions show:
+- Final stats (high score, total games, total points)
+- Game breakdown with scores and stats per game
+- "Start New Session" button
 
 ## Environment Variables
 

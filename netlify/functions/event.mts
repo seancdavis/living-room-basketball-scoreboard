@@ -21,6 +21,7 @@ export default async (req: Request, context: Context) => {
         previousMode,
         newMode,
         usedFreebie,
+        isTipIn,
         sequenceNumber,
       } = body;
 
@@ -43,6 +44,7 @@ export default async (req: Request, context: Context) => {
         previousMode,
         newMode,
         usedFreebie,
+        isTipIn,
         sequenceNumber,
       }).returning();
 
@@ -77,6 +79,7 @@ export default async (req: Request, context: Context) => {
           previousMode: e.previousMode,
           newMode: e.newMode,
           usedFreebie: e.usedFreebie,
+          isTipIn: e.isTipIn,
           sequenceNumber: e.sequenceNumber,
         }))
       ).returning();
