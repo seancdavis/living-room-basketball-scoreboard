@@ -40,8 +40,8 @@ export function useVoiceControl(onCommand, activateMicrophone, deactivateMicroph
     setLastTranscript(transcript);
 
     try {
-      console.log('[Voice] Calling /api/voice-command...');
-      const response = await fetch('/api/voice-command', {
+      console.log('[Voice] Calling voice-command API...');
+      const response = await fetch('/.netlify/functions/voice-command', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ transcript })
@@ -115,6 +115,7 @@ export function useVoiceControl(onCommand, activateMicrophone, deactivateMicroph
     };
 
     recognition.onerror = (event) => {
+      console.log('[Voice] Recognition error:', event.error, event);
       if (event.error === 'no-speech') {
         // This is normal, just no speech detected
         return;
@@ -124,7 +125,9 @@ export function useVoiceControl(onCommand, activateMicrophone, deactivateMicroph
         return;
       }
       if (event.error === 'network') {
-        setError('Network error: Check internet connection and microphone permissions');
+        // Network error typically means browser is blocking speech recognition servers
+        // Common in privacy-focused browsers like Arc, Brave, etc.
+        setError('Speech recognition blocked by browser. Try Chrome or Safari.');
       } else if (event.error === 'not-allowed') {
         setError('Microphone access denied. Please allow microphone in browser settings.');
       } else if (event.error === 'audio-capture') {
