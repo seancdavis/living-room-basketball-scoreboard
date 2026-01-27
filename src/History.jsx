@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
+import { Link } from 'react-router-dom'
+import { Trash2 } from 'lucide-react'
 import './History.css'
 
 function formatDate(dateString) {
@@ -12,7 +14,32 @@ function formatDate(dateString) {
   })
 }
 
-function History({ onClose }) {
+function isSessionInProgress(session) {
+  // If endedAt is set, session is definitely ended
+  if (session.endedAt) {
+    return false
+  }
+
+  // Calculate elapsed time to see if session would still be active
+  const now = Date.now()
+  const startedAtMs = new Date(session.startedAt).getTime()
+  const durationMs = (session.durationSeconds || 600) * 1000
+  const totalPausedMs = session.totalPausedMs || 0
+
+  let elapsedMs
+  if (session.isPaused && session.pausedAt) {
+    // If paused, calculate elapsed up to pause time
+    elapsedMs = new Date(session.pausedAt).getTime() - startedAtMs - totalPausedMs
+  } else {
+    // If running, calculate elapsed up to now
+    elapsedMs = now - startedAtMs - totalPausedMs
+  }
+
+  // Session is in progress if elapsed time is less than duration
+  return elapsedMs < durationMs
+}
+
+function History() {
   const [sessions, setSessions] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -22,7 +49,7 @@ function History({ onClose }) {
   const fetchSessions = useCallback(async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/session')
+      const response = await fetch('/.netlify/functions/session')
       const data = await response.json()
       if (data.error) {
         throw new Error(data.error)
@@ -47,7 +74,7 @@ function History({ onClose }) {
 
     try {
       setDeleting(sessionId)
-      const response = await fetch(`/api/session?id=${sessionId}`, {
+      const response = await fetch(`/.netlify/functions/session?id=${sessionId}`, {
         method: 'DELETE',
       })
       const data = await response.json()
@@ -69,11 +96,11 @@ function History({ onClose }) {
   }
 
   return (
-    <div className="history-overlay">
-      <div className="history-modal">
+    <div className="history-page">
+      <div className="history-container">
         <div className="history-header">
-          <h2>Session History</h2>
-          <button className="close-btn" onClick={onClose}>×</button>
+          <Link to="/" className="back-link">← Back</Link>
+          <h1>Session History</h1>
         </div>
 
         {loading && (
@@ -110,7 +137,7 @@ function History({ onClose }) {
                       <span className="stat-label">total pts</span>
                     </span>
                   </div>
-                  {!session.endedAt && (
+                  {isSessionInProgress(session) && (
                     <div className="session-status">In Progress</div>
                   )}
                 </div>
@@ -139,7 +166,7 @@ function History({ onClose }) {
                       onClick={() => handleDelete(session.id)}
                       title="Delete session"
                     >
-                      🗑️
+                      <Trash2 size={18} />
                     </button>
                   )}
                 </div>
