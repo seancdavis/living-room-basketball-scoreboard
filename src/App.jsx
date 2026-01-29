@@ -70,6 +70,9 @@ function GameSession() {
   const [hydrationComplete, setHydrationComplete] = useState(!urlSessionId)
   const [endedSessionData, setEndedSessionData] = useState(null)
 
+  // Ref to skip lifecycle effects during the render cycle after hydration
+  const hydrationJustCompletedRef = useRef(false)
+
   // Hydrate state from server when loading a session from URL
   useEffect(() => {
     if (urlSessionId && serverState && !hydrationComplete) {
@@ -77,14 +80,41 @@ function GameSession() {
       if (gameData) {
         if (gameData.sessionEnded) {
           // Session is ended - show read-only view
-          // eslint-disable-next-line react-hooks/set-state-in-effect
           setEndedSessionData(gameData)
         } else {
           // Session is active - hydrate state
+          // Mark that hydration just completed so lifecycle effects skip the first render
+          hydrationJustCompletedRef.current = true
+
           hydrateFromServer(gameData)
           setSessionId(serverState.session.id)
-          if (serverState.currentGame) {
-            setGameId(serverState.currentGame.id)
+
+          // Sync the pause state refs with server data
+          if (gameData.isPaused && gameData.pausedAt) {
+            pauseStartTimeRef.current = new Date(gameData.pausedAt).getTime()
+          }
+          totalPausedMsRef.current = gameData.totalPausedMs || 0
+          prevPausedRef.current = gameData.isPaused || false
+
+          // Sync game tracking stats
+          if (gameData.games && gameData.games.length > 0) {
+            gameCountRef.current = gameData.games.length
+            // Calculate total points from completed games
+            totalPointsRef.current = gameData.games.reduce((sum, g) => {
+              // Only count final scores from inactive games
+              return sum + (g.isActive ? 0 : (g.finalScore || 0))
+            }, 0)
+          }
+
+          if (gameData.currentGame) {
+            setGameId(gameData.currentGame.id)
+            // Set the previous score ref for tracking
+            if (gameData.gameIsActive && gameData.gameState) {
+              prevScoreRef.current = gameData.gameState.score || 0
+              // Also sync other tracking refs to prevent spurious recordings
+              prevMissesRef.current = gameData.gameState.misses ?? 3
+              prevFreebiesRef.current = gameData.gameState.freebiesRemaining ?? 0
+            }
           }
         }
       }
@@ -191,6 +221,12 @@ function GameSession() {
   // Track session lifecycle
   const prevSessionActiveRef = useRef(false)
   useEffect(() => {
+    // Skip side effects during hydration
+    if (hydrationJustCompletedRef.current) {
+      prevSessionActiveRef.current = sessionActive
+      return
+    }
+
     const wasActive = prevSessionActiveRef.current
     prevSessionActiveRef.current = sessionActive
 
@@ -215,6 +251,13 @@ function GameSession() {
   // Track game lifecycle
   const prevGameActiveRef = useRef(false)
   useEffect(() => {
+    // Skip side effects during hydration (but clear the flag after this effect runs)
+    if (hydrationJustCompletedRef.current) {
+      prevGameActiveRef.current = gameActive
+      hydrationJustCompletedRef.current = false
+      return
+    }
+
     const wasActive = prevGameActiveRef.current
     prevGameActiveRef.current = gameActive
 
@@ -233,7 +276,11 @@ function GameSession() {
 
   // Track score changes (makes in point mode)
   useEffect(() => {
-    if (!gameActive) return
+    // Always update the ref to prevent spurious recordings after hydration
+    if (!gameActive || hydrationComplete === false) {
+      prevScoreRef.current = score
+      return
+    }
     const prevScore = prevScoreRef.current
     if (score > prevScore) {
       const pointsEarned = score - prevScore
@@ -250,7 +297,7 @@ function GameSession() {
       }, isTipIn)
     }
     prevScoreRef.current = score
-  }, [score, gameActive, multiplier, multiplierShotsRemaining, misses, freebiesRemaining, mode, recordMake])
+  }, [score, gameActive, multiplier, multiplierShotsRemaining, misses, freebiesRemaining, mode, recordMake, hydrationComplete])
 
   // Track multiplier changes (makes in multiplier mode)
   const prevMultiplierRef = useRef(multiplier)
@@ -277,7 +324,10 @@ function GameSession() {
   // Track mode changes
   const prevModeRef = useRef(mode)
   useEffect(() => {
-    if (!gameActive) return
+    if (!gameActive || hydrationComplete === false) {
+      prevModeRef.current = mode
+      return
+    }
     const prevMode = prevModeRef.current
     if (mode !== prevMode) {
       recordModeChange({
@@ -290,11 +340,11 @@ function GameSession() {
       }, prevMode, mode)
     }
     prevModeRef.current = mode
-  }, [mode, gameActive, score, multiplier, multiplierShotsRemaining, misses, freebiesRemaining, recordModeChange])
+  }, [mode, gameActive, score, multiplier, multiplierShotsRemaining, misses, freebiesRemaining, recordModeChange, hydrationComplete])
 
   // Track misses after they happen
   useEffect(() => {
-    if (!gameActive || !trackingMissRef.current) {
+    if (!gameActive || !trackingMissRef.current || hydrationComplete === false) {
       prevMissesRef.current = misses
       prevFreebiesRef.current = freebiesRemaining
       return
@@ -322,7 +372,7 @@ function GameSession() {
 
     prevMissesRef.current = misses
     prevFreebiesRef.current = freebiesRemaining
-  }, [gameActive, misses, freebiesRemaining, score, multiplier, multiplierShotsRemaining, mode, recordMiss])
+  }, [gameActive, misses, freebiesRemaining, score, multiplier, multiplierShotsRemaining, mode, recordMiss, hydrationComplete])
 
   // Sync game state to server on changes (debounced)
   const syncTimeoutRef = useRef(null)
@@ -384,7 +434,7 @@ function GameSession() {
   // Audio feedback for score changes (makes in point mode)
   const audioScoreRef = useRef(score)
   useEffect(() => {
-    if (!gameActive) {
+    if (!gameActive || hydrationComplete === false) {
       audioScoreRef.current = score
       return
     }
@@ -392,12 +442,12 @@ function GameSession() {
       playMake()
     }
     audioScoreRef.current = score
-  }, [score, gameActive, playMake])
+  }, [score, gameActive, playMake, hydrationComplete])
 
   // Audio feedback for multiplier increases (makes in multiplier mode)
   const audioMultiplierRef = useRef(multiplier)
   useEffect(() => {
-    if (!gameActive) {
+    if (!gameActive || hydrationComplete === false) {
       audioMultiplierRef.current = multiplier
       return
     }
@@ -406,13 +456,13 @@ function GameSession() {
       playMake()
     }
     audioMultiplierRef.current = multiplier
-  }, [multiplier, mode, gameActive, playMake])
+  }, [multiplier, mode, gameActive, playMake, hydrationComplete])
 
   // Audio feedback for misses
   const audioMissesRef = useRef(misses)
   const audioFreebiesRef = useRef(freebiesRemaining)
   useEffect(() => {
-    if (!gameActive) {
+    if (!gameActive || hydrationComplete === false) {
       audioMissesRef.current = misses
       audioFreebiesRef.current = freebiesRemaining
       return
@@ -427,12 +477,12 @@ function GameSession() {
     }
     audioMissesRef.current = misses
     audioFreebiesRef.current = freebiesRemaining
-  }, [misses, freebiesRemaining, gameActive, playMiss, playPassedTen])
+  }, [misses, freebiesRemaining, gameActive, playMiss, playPassedTen, hydrationComplete])
 
   // Audio feedback for mode changes
   const audioModeRef = useRef(mode)
   useEffect(() => {
-    if (!gameActive) {
+    if (!gameActive || hydrationComplete === false) {
       audioModeRef.current = mode
       return
     }
@@ -444,26 +494,34 @@ function GameSession() {
       }
     }
     audioModeRef.current = mode
-  }, [mode, gameActive, playPointMode, playMultiplierMode])
+  }, [mode, gameActive, playPointMode, playMultiplierMode, hydrationComplete])
 
   // Audio feedback for game over
   const audioGameActiveRef = useRef(gameActive)
   useEffect(() => {
+    if (hydrationComplete === false) {
+      audioGameActiveRef.current = gameActive
+      return
+    }
     if (!gameActive && audioGameActiveRef.current) {
       // Game just ended
       playGameOver()
     }
     audioGameActiveRef.current = gameActive
-  }, [gameActive, playGameOver])
+  }, [gameActive, playGameOver, hydrationComplete])
 
   // Audio feedback for pause toggle
   const audioPausedRef = useRef(paused)
   useEffect(() => {
+    if (hydrationComplete === false) {
+      audioPausedRef.current = paused
+      return
+    }
     if (paused !== audioPausedRef.current && sessionActive) {
       playPauseToggle()
     }
     audioPausedRef.current = paused
-  }, [paused, sessionActive, playPauseToggle])
+  }, [paused, sessionActive, playPauseToggle, hydrationComplete])
 
   // Handle voice commands - uses refs to always have current state
   const handleVoiceCommand = useCallback((action) => {

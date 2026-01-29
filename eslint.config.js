@@ -24,6 +24,8 @@ export default defineConfig([
     },
     rules: {
       'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+      // Disable the experimental immutability rule that is too strict about refs in effects
+      'react-hooks/immutability': 'off',
     },
   },
 ])
