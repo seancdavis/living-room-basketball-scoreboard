@@ -11,6 +11,14 @@ export function useVoiceControl(onCommand, activateMicrophone, deactivateMicroph
   const recognitionRef = useRef(null);
   const feedbackTimeoutRef = useRef(null);
 
+  // Use ref to avoid stale closure in recognition callbacks
+  const onCommandRef = useRef(onCommand);
+
+  // Keep ref updated with latest onCommand callback
+  useEffect(() => {
+    onCommandRef.current = onCommand;
+  }, [onCommand]);
+
   // Clear feedback after a delay
   const clearFeedback = useCallback(() => {
     if (feedbackTimeoutRef.current) {
@@ -41,7 +49,7 @@ export function useVoiceControl(onCommand, activateMicrophone, deactivateMicroph
 
     try {
       console.log('[Voice] Calling voice-command API...');
-      const response = await fetch('/.netlify/functions/voice-command', {
+      const response = await fetch('/api/voice-command', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ transcript })
@@ -61,7 +69,7 @@ export function useVoiceControl(onCommand, activateMicrophone, deactivateMicroph
         // Only execute if confidence is high enough
         if (result.action !== 'unknown' && result.confidence >= 0.5) {
           console.log('[Voice] Executing action:', result.action);
-          onCommand?.(result.action);
+          onCommandRef.current?.(result.action);
         } else {
           console.log('[Voice] Action not executed - unknown or low confidence:', result);
         }
@@ -77,7 +85,7 @@ export function useVoiceControl(onCommand, activateMicrophone, deactivateMicroph
     } finally {
       setIsProcessing(false);
     }
-  }, [onCommand, clearFeedback]);
+  }, [clearFeedback]);
 
   // Start listening
   const startListening = useCallback(async () => {
@@ -140,12 +148,26 @@ export function useVoiceControl(onCommand, activateMicrophone, deactivateMicroph
 
     recognition.onend = () => {
       // Restart if we're still supposed to be listening
-      if (recognitionRef.current === recognition && isListening) {
-        try {
-          recognition.start();
-        } catch {
-          setIsListening(false);
-        }
+      if (recognitionRef.current === recognition) {
+        // Safari requires a small delay before restarting speech recognition
+        // Without this delay, Safari throws "The string did not match the expected pattern"
+        setTimeout(() => {
+          // Check again after delay since user may have stopped listening
+          if (recognitionRef.current === recognition) {
+            try {
+              recognition.start();
+            } catch (err) {
+              console.log('[Voice] Failed to restart recognition:', err.message);
+              // On Safari, this error often means speech recognition service isn't available
+              // Check if it's the Safari-specific pattern match error
+              if (err.message?.includes('string did not match')) {
+                setError('Speech recognition unavailable. Enable Dictation in System Preferences > Keyboard.');
+              }
+              setIsListening(false);
+              recognitionRef.current = null;
+            }
+          }
+        }, 100);
       } else {
         setIsListening(false);
       }
@@ -156,9 +178,19 @@ export function useVoiceControl(onCommand, activateMicrophone, deactivateMicroph
     try {
       recognition.start();
     } catch (err) {
-      setError(`Failed to start: ${err.message}`);
+      // Safari throws "The string did not match the expected pattern" when
+      // Dictation isn't enabled or speech recognition service is unavailable
+      if (err.message?.includes('string did not match')) {
+        setError('Speech recognition unavailable. Enable Dictation in System Preferences > Keyboard.');
+      } else {
+        setError(`Failed to start: ${err.message}`);
+      }
+      recognitionRef.current = null;
+      if (deactivateMicrophone) {
+        deactivateMicrophone();
+      }
     }
-  }, [isSupported, isListening, processTranscript, activateMicrophone]);
+  }, [isSupported, processTranscript, activateMicrophone, deactivateMicrophone]);
 
   // Stop listening
   const stopListening = useCallback(() => {
