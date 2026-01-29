@@ -17,7 +17,7 @@ export function useServerState(sessionId) {
     setError(null);
 
     try {
-      const response = await fetch(`/.netlify/functions/session?id=${sessionId}`);
+      const response = await fetch(`/api/session?id=${sessionId}`);
       if (!response.ok) {
         throw new Error('Failed to fetch session');
       }
@@ -45,7 +45,7 @@ export function useServerState(sessionId) {
     if (!sessionId) return;
 
     try {
-      await fetch('/.netlify/functions/session', {
+      await fetch('/api/session', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId, ...updates }),
@@ -60,7 +60,7 @@ export function useServerState(sessionId) {
     if (!gameId) return;
 
     try {
-      await fetch('/.netlify/functions/game', {
+      await fetch('/api/game', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ gameId, ...updates }),

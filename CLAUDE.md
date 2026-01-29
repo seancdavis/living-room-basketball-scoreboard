@@ -29,6 +29,12 @@ netlify/functions/
   event.mts         - POST/PUT for recording events (includes isTipIn)
   voice-command.mts - Anthropic API for voice command processing
 
+  API Paths (via config export):
+  - /api/session       → session.mts
+  - /api/game          → game.mts
+  - /api/event         → event.mts
+  - /api/voice-command → voice-command.mts
+
 db/
   schema.ts         - Drizzle schema (sessions, games, events tables)
   index.ts          - DB connection export
@@ -147,3 +153,16 @@ Ended sessions show:
 
 - `NETLIFY_DATABASE_URL` - Postgres connection (auto-injected by Netlify)
 - Anthropic API key configured in Netlify environment
+
+## Development Rules
+
+### API Path Convention
+All Netlify Functions MUST use clean `/api/...` paths instead of the default `/.netlify/functions/...` paths. This is done by exporting a `config` object with a `path` property in each function file:
+
+```typescript
+export const config = {
+  path: '/api/function-name'
+};
+```
+
+Frontend code should always call `/api/...` endpoints, never `/.netlify/functions/...`.

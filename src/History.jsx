@@ -49,7 +49,7 @@ function History() {
   const fetchSessions = useCallback(async () => {
     try {
       setLoading(true)
-      const response = await fetch('/.netlify/functions/session')
+      const response = await fetch('/api/session')
       const data = await response.json()
       if (data.error) {
         throw new Error(data.error)
@@ -74,7 +74,7 @@ function History() {
 
     try {
       setDeleting(sessionId)
-      const response = await fetch(`/.netlify/functions/session?id=${sessionId}`, {
+      const response = await fetch(`/api/session?id=${sessionId}`, {
         method: 'DELETE',
       })
       const data = await response.json()

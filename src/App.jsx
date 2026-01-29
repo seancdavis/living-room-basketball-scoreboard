@@ -231,7 +231,7 @@ function GameSession() {
     }
   }, [gameActive, score, misses, timeRemaining, createGame, endGameTracking])
 
-  // Track score changes (makes)
+  // Track score changes (makes in point mode)
   useEffect(() => {
     if (!gameActive) return
     const prevScore = prevScoreRef.current
@@ -251,6 +251,28 @@ function GameSession() {
     }
     prevScoreRef.current = score
   }, [score, gameActive, multiplier, multiplierShotsRemaining, misses, freebiesRemaining, mode, recordMake])
+
+  // Track multiplier changes (makes in multiplier mode)
+  const prevMultiplierRef = useRef(multiplier)
+  useEffect(() => {
+    if (!gameActive) return
+    const prevMultiplier = prevMultiplierRef.current
+    // Multiplier increases when making a shot in multiplier mode
+    if (multiplier > prevMultiplier && mode === 'multiplier') {
+      const isTipIn = pendingTipInRef.current
+      pendingTipInRef.current = false
+      recordMake({
+        score,
+        multiplier,
+        multiplierShotsRemaining,
+        misses,
+        freebiesRemaining,
+        mode,
+        pointsEarned: 0, // No points earned in multiplier mode
+      }, isTipIn)
+    }
+    prevMultiplierRef.current = multiplier
+  }, [multiplier, gameActive, score, multiplierShotsRemaining, misses, freebiesRemaining, mode, recordMake])
 
   // Track mode changes
   const prevModeRef = useRef(mode)

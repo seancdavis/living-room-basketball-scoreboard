@@ -15,7 +15,7 @@ export function useGameTracking() {
   const createSession = useCallback(async () => {
     const promise = (async () => {
       try {
-        const response = await fetch('/.netlify/functions/session', {
+        const response = await fetch('/api/session', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ durationSeconds: 600 }),
@@ -40,7 +40,7 @@ export function useGameTracking() {
     if (!sessionIdRef.current) return;
 
     try {
-      await fetch('/.netlify/functions/session', {
+      await fetch('/api/session', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -71,7 +71,7 @@ export function useGameTracking() {
       }
 
       try {
-        const response = await fetch('/.netlify/functions/game', {
+        const response = await fetch('/api/game', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ sessionId: sessionIdRef.current }),
@@ -114,7 +114,7 @@ export function useGameTracking() {
     try {
       // First flush any pending events
       if (pendingEventsRef.current.length > 0) {
-        await fetch('/.netlify/functions/event', {
+        await fetch('/api/event', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ events: pendingEventsRef.current }),
@@ -123,7 +123,7 @@ export function useGameTracking() {
       }
 
       // Then update the game
-      await fetch('/.netlify/functions/game', {
+      await fetch('/api/game', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -179,7 +179,7 @@ export function useGameTracking() {
             // Send them
             const eventsToSend = [...pendingEventsRef.current];
             pendingEventsRef.current = [];
-            fetch('/.netlify/functions/event', {
+            fetch('/api/event', {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ events: eventsToSend }),
@@ -208,7 +208,7 @@ export function useGameTracking() {
       const eventsToSend = [...pendingEventsRef.current];
       pendingEventsRef.current = [];
 
-      fetch('/.netlify/functions/event', {
+      fetch('/api/event', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ events: eventsToSend }),
@@ -270,7 +270,7 @@ export function useGameTracking() {
     if (!gameIdRef.current) return;
 
     try {
-      await fetch('/.netlify/functions/game', {
+      await fetch('/api/game', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -293,7 +293,7 @@ export function useGameTracking() {
     if (!sessionIdRef.current) return;
 
     try {
-      await fetch('/.netlify/functions/session', {
+      await fetch('/api/session', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

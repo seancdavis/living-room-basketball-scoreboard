@@ -152,3 +152,7 @@ export default async (req: Request, context: Context) => {
 
   return Response.json({ error: "Method not allowed" }, { status: 405 });
 };
+
+export const config = {
+  path: '/api/game'
+};
