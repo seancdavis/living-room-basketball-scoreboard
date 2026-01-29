@@ -302,9 +302,12 @@ export function useGameState() {
 
       // Check for freebies
       if (freebiesRemaining > 0) {
-        setFreebiesRemaining(prev => prev - 1);
-        // Using a freebie means you chose to continue shooting, forfeit multiplier mode entry
-        setCanEnterMultiplierMode(false);
+        const newFreebies = freebiesRemaining - 1;
+        setFreebiesRemaining(newFreebies);
+        // Only forfeit multiplier mode entry when freebies are exhausted
+        if (newFreebies <= 0) {
+          setCanEnterMultiplierMode(false);
+        }
       } else {
         // No freebies, spend a miss
         const newMisses = misses - 1;
