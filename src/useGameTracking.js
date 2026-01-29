@@ -134,6 +134,7 @@ export function useGameTracking() {
           totalMisses: statsRef.current.misses,
           durationSeconds,
           endReason,
+          ended: true,
         }),
       });
     } catch (error) {

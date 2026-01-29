@@ -125,9 +125,16 @@ export default async (req: Request, context: Context) => {
       });
 
       // Find the current active game if any
-      const currentGame = session.currentGameId
+      // If currentGameId is set, use that; otherwise find the most recent game
+      let currentGame = session.currentGameId
         ? sessionGames.find(g => g.id === session.currentGameId)
         : null;
+
+      // If no currentGameId but there are games, use the most recent one
+      // This handles the "game over within session" state
+      if (!currentGame && sessionGames.length > 0) {
+        currentGame = sessionGames[sessionGames.length - 1];
+      }
 
       // Calculate time remaining
       let timeRemaining: number | null = null;

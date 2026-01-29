@@ -109,38 +109,53 @@ export function serverStateToGameState(serverState) {
     return null;
   }
 
-  const { session, currentGame, timeRemaining, isEnded } = serverState;
+  const { session, currentGame, timeRemaining, isEnded, games = [] } = serverState;
 
   // If session is ended, return read-only state
   if (isEnded) {
     return {
       sessionEnded: true,
       session,
-      games: serverState.games || [],
+      games,
     };
   }
 
-  // Calculate game state from current game
+  // Find the most recent game if currentGame isn't provided
+  // This handles the case where currentGameId might be null but there are games
+  const mostRecentGame = currentGame || (games.length > 0 ? games[games.length - 1] : null);
+
+  // Calculate game state from current/most recent game
   let gameState = null;
-  if (currentGame && currentGame.isActive) {
+  let gameIsActive = false;
+
+  if (mostRecentGame) {
+    gameIsActive = mostRecentGame.isActive;
     gameState = {
-      score: currentGame.currentScore,
-      multiplier: currentGame.currentMultiplier,
-      multiplierShotsRemaining: currentGame.currentMultiplierShotsRemaining,
-      misses: currentGame.currentMisses,
-      freebiesRemaining: currentGame.currentFreebiesRemaining,
-      mode: currentGame.currentMode,
+      score: mostRecentGame.currentScore,
+      multiplier: mostRecentGame.currentMultiplier,
+      multiplierShotsRemaining: mostRecentGame.currentMultiplierShotsRemaining,
+      misses: mostRecentGame.currentMisses,
+      freebiesRemaining: mostRecentGame.currentFreebiesRemaining,
+      mode: mostRecentGame.currentMode,
+      // For inactive games, include final score too
+      finalScore: mostRecentGame.finalScore,
     };
   }
 
   return {
     sessionEnded: false,
     session,
-    currentGame,
+    currentGame: mostRecentGame,
     gameState,
+    gameIsActive,
     timeRemaining: timeRemaining ?? calculateTimeRemaining(session),
     isPaused: session.isPaused,
+    pausedAt: session.pausedAt,
+    totalPausedMs: session.totalPausedMs || 0,
     highScore: session.highScore,
-    games: serverState.games || [],
+    games,
+    // Session stats for hydration
+    totalGames: games.length,
+    totalPoints: games.reduce((sum, g) => sum + (g.finalScore || 0), 0),
   };
 }

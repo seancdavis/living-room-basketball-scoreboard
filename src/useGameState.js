@@ -46,7 +46,14 @@ export function useGameState() {
     if (!serverData || hydratedRef.current) return;
     hydratedRef.current = true;
 
-    const { gameState, timeRemaining: serverTimeRemaining, isPaused, highScore, currentGame } = serverData;
+    const {
+      gameState,
+      timeRemaining: serverTimeRemaining,
+      isPaused,
+      highScore,
+      gameIsActive,
+      currentGame,
+    } = serverData;
 
     // Set session state
     setSessionActive(true);
@@ -54,8 +61,9 @@ export function useGameState() {
     setSessionHighScore(highScore ?? 0);
     setPaused(isPaused ?? false);
 
-    // Set game state if there's an active game
-    if (gameState && currentGame?.isActive) {
+    // Set game state based on whether there's an active game
+    if (gameIsActive && gameState) {
+      // Active game - restore full game state
       setGameActive(true);
       setMode(gameState.mode ?? 'multiplier');
       setScore(gameState.score ?? 0);
@@ -66,9 +74,18 @@ export function useGameState() {
       setLastTenThreshold(Math.floor((gameState.score ?? 0) / 10) * 10);
       // After passing a 10, can enter multiplier mode
       setCanEnterMultiplierMode((gameState.freebiesRemaining ?? 0) > 0);
-    } else {
-      // No active game - show game over state
+    } else if (currentGame && gameState) {
+      // Inactive game (game over within session) - show game over state
       setGameActive(false);
+      // Restore the score from the last game for display
+      setScore(gameState.finalScore ?? gameState.score ?? 0);
+      setMode(gameState.mode ?? 'point');
+      setMultiplier(gameState.multiplier ?? 1);
+      setMisses(gameState.misses ?? 0);
+    } else {
+      // No game exists yet - show game over state to allow starting new game
+      setGameActive(false);
+      setScore(0);
     }
 
     // Clear history when hydrating
