@@ -242,7 +242,7 @@ function GameSession() {
       })
     } else if (!sessionActive && wasActive) {
       // Session just ended
-      endSessionTracking(sessionHighScore, totalPointsRef.current, gameCountRef.current)
+      endSessionTracking()
       // Navigate back to home
       navigate('/', { replace: true })
     }

@@ -36,7 +36,7 @@ export function useGameTracking() {
   }, []);
 
   // End the current session
-  const endSessionTracking = useCallback(async (highScore, totalPoints, totalGames) => {
+  const endSessionTracking = useCallback(async () => {
     if (!sessionIdRef.current) return;
 
     try {
@@ -44,10 +44,8 @@ export function useGameTracking() {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          id: sessionIdRef.current,
-          highScore,
-          totalPoints,
-          totalGames,
+          sessionId: sessionIdRef.current,
+          ended: true,
         }),
       });
     } catch (error) {
